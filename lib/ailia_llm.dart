@@ -143031,6 +143031,29 @@ class ailiaLlmFFI {
   late final _ailiaLLMGetBackendName = _ailiaLLMGetBackendNamePtr
       .asFunction<int Function(ffi.Pointer<ffi.Pointer<ffi.Char>>, int)>();
 
+  int ailiaLLMGetBackendDeviceName(
+    ffi.Pointer<ffi.Pointer<ffi.Char>> name,
+    int envIdx,
+  ) {
+    return _ailiaLLMGetBackendDeviceName(name, envIdx);
+  }
+
+  late final _ailiaLLMGetBackendDeviceName = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(ffi.Pointer<ffi.Pointer<ffi.Char>>,
+              ffi.UnsignedInt)>>('ailiaLLMGetBackendDeviceName')
+      .asFunction<int Function(ffi.Pointer<ffi.Pointer<ffi.Char>>, int)>();
+
+  /// Select a backend for this instance before opening a model.
+  int ailiaLLMSetBackend(ffi.Pointer<AILIALLM> llm, int backendIdx) {
+    return _ailiaLLMSetBackend(llm, backendIdx);
+  }
+
+  late final _ailiaLLMSetBackend = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(ffi.Pointer<AILIALLM>, ffi.UnsignedInt)>>(
+      'ailiaLLMSetBackend').asFunction<int Function(ffi.Pointer<AILIALLM>, int)>();
+
   /// \~japanese
   /// @brief LLMオブジェクトを作成します。
   /// @param llm LLMオブジェクトポインタへのポインタ

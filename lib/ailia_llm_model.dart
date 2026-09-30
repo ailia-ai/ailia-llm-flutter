@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:io';
 import 'package:ffi/ffi.dart';
-import 'dart:ffi';
 
 import 'ailia_llm.dart' as ailia_llm_dart;
 
@@ -12,31 +11,17 @@ const String BACKEND_VULKAN = "Vulkan";
 const String BACKEND_METAL = "Metal";
 const String BACKEND_OPENCL = "OpenCL";
 
-List<List<String>> _ailiaCommonGetLlmPath() {
+String _ailiaCommonGetLlmPath() {
   if (Platform.isAndroid || Platform.isLinux) {
-    return [
-      ['libailia_llm.so'],
-      [BACKEND_CPU]
-    ];
+    return 'libailia_llm.so';
   }
   if (Platform.isMacOS) {
-    return [
-      ['libailia_llm.dylib'],
-      [BACKEND_METAL]
-    ];
+    return 'libailia_llm.dylib';
   }
   if (Platform.isWindows) {
-    // On arm64, ailia_llm.dll is built with OpenCL instead of Vulkan
-    final bool isArm64 = Abi.current() == Abi.windowsArm64;
-    return [
-      ['ailia_llm_fallback.dll', 'ailia_llm.dll'],
-      [BACKEND_CPU, isArm64 ? BACKEND_OPENCL : BACKEND_VULKAN]
-    ];
+    return 'ailia_llm.dll';
   }
-  return [
-    ['internal'],
-    [BACKEND_CPU]
-  ];
+  return 'internal';
 }
 
 DynamicLibrary _ailiaCommonGetLibrary(String path) {
@@ -55,12 +40,18 @@ typedef VkEnumerateInstanceVersionDart = int Function(
     Pointer<Uint32> apiVersion);
 
 class AiliaLLMModel {
-  static List<List<String>> _backend = List<List<String>>.empty();
+  static List<String> _backend = List<String>.empty();
+  static List<String> _backendTypes = List<String>.empty();
+  static DynamicLibrary? _sharedLibrary;
+  static ailia_llm_dart.ailiaLlmFFI? _sharedApi;
+
+  static ailia_llm_dart.ailiaLlmFFI _getApi() {
+    _sharedLibrary ??= _ailiaCommonGetLibrary(_ailiaCommonGetLlmPath());
+    return _sharedApi ??= ailia_llm_dart.ailiaLlmFFI(_sharedLibrary!);
+  }
 
   Pointer<Pointer<ailia_llm_dart.AILIALLM>> pLLm = nullptr;
-  DynamicLibrary? _library;
   dynamic dllHandle;
-  String _currentBackend = "";
   bool _contextFull = false;
   Uint8List _buf = Uint8List(0);
   String _beforeText = "";
@@ -95,76 +86,94 @@ class AiliaLLMModel {
   }
 
   static List<String> getBackendList() {
-    if (_backend.length > 0) {
-      return _backend[1];
+    if (_backend.isNotEmpty) {
+      return List<String>.unmodifiable(_backend);
     }
-    _backend = List<List<String>>.empty(growable: true);
-    _backend.add(List<String>.empty(growable: true));
-    _backend.add(List<String>.empty(growable: true));
-    List<List<String>> libraries = _ailiaCommonGetLlmPath();
-    for (int i = 0; i < libraries[0].length; i++) {
-      // Check Vulkan Supported Version
-      if (libraries[1][i] == BACKEND_VULKAN) {
-        if (checkVulkanVersion() == false) {
-          continue;
-        }
+    final api = _getApi();
+    final count = calloc<UnsignedInt>();
+    try {
+      final status = api.ailiaLLMGetBackendCount(count);
+      if (status != ailia_llm_dart.AILIA_LLM_STATUS_SUCCESS) {
+        throw Exception('ailiaLLMGetBackendCount returned $status');
       }
-      // Continue
+      final names = <String>[];
+      final types = <String>[];
+      final name = calloc<Pointer<Char>>();
       try {
-        DynamicLibrary library = _ailiaCommonGetLibrary(libraries[0][i]);
-        _backend[0].add(libraries[0][i]);
-        _backend[1].add(libraries[1][i]);
-        library.close();
-      } on Exception {
-      } on ArgumentError {}
+        for (int i = 0; i < count.value; ++i) {
+          final status = api.ailiaLLMGetBackendName(name, i);
+          if (status != ailia_llm_dart.AILIA_LLM_STATUS_SUCCESS ||
+              name.value == nullptr) {
+            throw Exception('ailiaLLMGetBackendName returned $status');
+          }
+          final nativeName = name.value.cast<Utf8>().toDartString();
+          // ggml calls its Metal registry "MTL"; keep Flutter's public name.
+          final type = nativeName == 'MTL' ? BACKEND_METAL : nativeName;
+          types.add(type);
+          final deviceStatus = api.ailiaLLMGetBackendDeviceName(name, i);
+          if (deviceStatus != ailia_llm_dart.AILIA_LLM_STATUS_SUCCESS ||
+              name.value == nullptr) {
+            throw Exception('ailiaLLMGetBackendDeviceName returned $deviceStatus');
+          }
+          final deviceName = name.value.cast<Utf8>().toDartString();
+          names.add(type == BACKEND_CPU ? type : '$type: $deviceName [$i]');
+        }
+      } finally {
+        calloc.free(name);
+      }
+      _backend = names;
+      _backendTypes = types;
+      return List<String>.unmodifiable(_backend);
+    } finally {
+      calloc.free(count);
     }
-    return _backend[1];
   }
 
   /// Initialize the context using the given model and parameters.
   void open(String modelPath, int nCtx, {String backend = ""}) {
     if (pLLm != nullptr) {
-      if (pLLm.value != nullptr) {
-        dllHandle.ailiaLLMDestroy(pLLm.value);
-      }
+      close();
     }
 
     // Reset multimodal projector state when opening a new model
     _multimodalProjectorOpened = false;
 
-    if (backend == "") {
-      List<String> backendList = getBackendList();
-      if (backendList.isEmpty) {
-        throw Exception("ailiaLLM no available backend found");
-      }
-      backend = backendList[0];
+    final List<String> backendList = getBackendList();
+    if (backendList.isEmpty) {
+      throw Exception('ailiaLLM no available backend found');
     }
-
-    if (_currentBackend != backend) {
-      if (_library != null) {
-        _library!.close();
-        _library = null;
-      }
-      List<String> backendList = getBackendList();
-      for (int i = 0; i < backendList.length; i++) {
-        if (backendList[i] == backend) {
-          _library = _ailiaCommonGetLibrary(_backend[0][i]);
-          dllHandle = ailia_llm_dart.ailiaLlmFFI(_library!);
-          _currentBackend = backend;
-          break;
-        }
-      }
-      if (_library == null) {
-        throw Exception("ailiaLLM backend not found");
-      }
+    // macOS/iOS previously used llama.cpp's automatic Metal-to-CPU fitting.
+    // Preserve that behavior when the caller did not request a backend.
+    final automatic = backend.isEmpty && (Platform.isMacOS || Platform.isIOS);
+    if (backend.isEmpty && !automatic) {
+      backend = _backendTypes.contains(BACKEND_CPU)
+          ? BACKEND_CPU
+          : backendList.first;
     }
+    var backendIdx = automatic ? -1 : backendList.indexOf(backend);
+    if (!automatic && backendIdx < 0) {
+      backendIdx = _backendTypes.indexOf(backend);
+    }
+    if (!automatic && backendIdx < 0) {
+      throw Exception('ailiaLLM backend not found: $backend');
+    }
+    dllHandle = _getApi();
 
     pLLm = malloc<Pointer<ailia_llm_dart.AILIALLM>>();
     pLLm.value = nullptr;
 
     var status = dllHandle.ailiaLLMCreate(pLLm);
     if (status != 0) {
+      close();
       throw Exception("ailiaLLMCreate returned an error status $status");
+    }
+
+    if (!automatic) {
+      status = dllHandle.ailiaLLMSetBackend(pLLm.value, backendIdx);
+      if (status != 0) {
+        close();
+        throw Exception('ailiaLLMSetBackend returned an error status $status');
+      }
     }
 
     if (Platform.isWindows) {
@@ -177,6 +186,7 @@ class AiliaLLMModel {
       malloc.free(path);
     }
     if (status != 0) {
+      close();
       throw Exception("ailiaLLMOpenModelFile returned an error status $status");
     }
   }
