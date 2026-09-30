@@ -69,6 +69,14 @@ else()
   set(ailia_llm_bundled_libraries
     "${CMAKE_CURRENT_SOURCE_DIR}/x64/ailia_llm.dll"
     "${CMAKE_CURRENT_SOURCE_DIR}/x64/ailia_llm_fallback.dll"
+    "${CMAKE_CURRENT_SOURCE_DIR}/x64/ggml-base.dll"
+    "${CMAKE_CURRENT_SOURCE_DIR}/x64/ggml-cpu-alderlake.dll"
+    "${CMAKE_CURRENT_SOURCE_DIR}/x64/ggml-cpu-haswell.dll"
+    "${CMAKE_CURRENT_SOURCE_DIR}/x64/ggml-cpu-x64.dll"
+    "${CMAKE_CURRENT_SOURCE_DIR}/x64/ggml-vulkan.dll"
+    "${CMAKE_CURRENT_SOURCE_DIR}/x64/ggml.dll"
+    "${CMAKE_CURRENT_SOURCE_DIR}/x64/llama-common.dll"
+    "${CMAKE_CURRENT_SOURCE_DIR}/x64/llama.dll"
     PARENT_SCOPE
   )
 endif()
