@@ -44,13 +44,13 @@ class _MyAppState extends State<MyApp> {
     });
 
     downloadModel(
-        "https://storage.googleapis.com/ailia-models/gemma/gemma-2-2b-it-Q4_K_M.gguf",
-        "gemma-2-2b-it-Q4_K_M.gguf", (model_file) {
+        "https://storage.googleapis.com/ailia-models/gemma/gemma-4-E2B-it-Q4_K_M.gguf",
+        "gemma-4-E2B-it-Q4_K_M.gguf", (model_file) {
       setState(() {
         _predictText = "Processing...";
       });
 
-      int nCtx = 512;
+      int nCtx = 2048;
       _ailiaLlmModel.open(model_file.path, nCtx, backend: _backend);
 
       int startTime = DateTime.now().millisecondsSinceEpoch;
