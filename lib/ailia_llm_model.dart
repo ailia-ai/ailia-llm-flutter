@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:ffi/ffi.dart';
 
 import 'ailia_llm.dart' as ailia_llm_dart;
+import 'src/backend_names.dart';
 
 const String BACKEND_CPU = "CPU";
 const String BACKEND_VULKAN = "Vulkan";
@@ -59,6 +60,33 @@ class AiliaLLMModel {
 
   AiliaLLMModel() {}
 
+  /// Detail of the last failed native call on this model.
+  String getErrorDetail() {
+    if (pLLm == nullptr || pLLm.value == nullptr) return '';
+    final detail = dllHandle.ailiaLLMGetErrorDetail(pLLm.value) as Pointer<Char>;
+    return detail == nullptr ? '' : detail.cast<Utf8>().toDartString();
+  }
+
+  /// Returns the device artifact stem (for example, `sm8475`) without opening
+  /// a model. Throws if QNN is unavailable or the device is unsupported.
+  static String getQNNModelName() {
+    final api = _getApi();
+    final output = calloc<Pointer<Char>>();
+    try {
+      final status = api.ailiaLLMGetQNNModelName(output);
+      if (status != ailia_llm_dart.AILIA_LLM_STATUS_SUCCESS) {
+        throw StateError('Failed to get QNN model name. Status: $status');
+      }
+      if (output.value == nullptr) {
+        throw StateError('QNN model name is null');
+      }
+      return output.value.cast<Utf8>().toDartString();
+    } finally {
+      // The returned string belongs to the library; copy it before freeing output.
+      calloc.free(output);
+    }
+  }
+
   static bool checkVulkanVersion() {
     try {
       final DynamicLibrary vulkanLib = Platform.isWindows
@@ -75,7 +103,7 @@ class AiliaLLMModel {
         final int variant = (version >> 29);
         final int major = (version >> 22) & 0x7F;
         final int minor = (version >> 12) & 0x3FF;
-        available = variant  == 0 && (major > 1 || (major == 1 && minor >= 1));
+        available = variant == 0 && (major > 1 || (major == 1 && minor >= 1));
         //print("Vulkan version ${major}.${minor}");
       }
       calloc.free(apiVersion);
@@ -116,12 +144,12 @@ class AiliaLLMModel {
             throw Exception('ailiaLLMGetBackendDeviceName returned $deviceStatus');
           }
           final deviceName = name.value.cast<Utf8>().toDartString();
-          names.add(type == BACKEND_CPU ? type : '$type: $deviceName [$i]');
+          names.add(type == BACKEND_CPU ? type : '$type: $deviceName');
         }
       } finally {
         calloc.free(name);
       }
-      _backend = names;
+      _backend = disambiguateBackendNames(names);
       _backendTypes = types;
       return List<String>.unmodifiable(_backend);
     } finally {
@@ -129,7 +157,9 @@ class AiliaLLMModel {
     }
   }
 
-  /// Initialize the context using the given model and parameters.
+  /// Opens a GGUF model or a self-contained, SoC-specific QNN text package.
+  /// Use [openMultimodalProjectorFile] afterwards for vision or audio.
+  /// A context size of zero selects the package/model default.
   void open(String modelPath, int nCtx, {String backend = ""}) {
     if (pLLm != nullptr) {
       close();
@@ -266,7 +296,7 @@ class AiliaLLMModel {
   /// Pass null or an empty list to clear the tools.
   ///
   /// The tools are rendered into the prompt through the chat template on the
-  /// next [setPrompt] call, the output is constrained to the tool call syntax,
+  /// next [setPromptJson] call, the output is constrained to the tool call syntax,
   /// and the buffered output can be retrieved with [getResponseJson].
   ///
   /// While tools are set, setPrompt fails with INVALID_STATE. Use setPromptJson
@@ -291,26 +321,6 @@ class AiliaLLMModel {
     }
   }
 
-  /// Parse the raw model output into an OpenAI-compatible assistant message.
-  ///
-  /// [text] is the concatenation of the text returned by [generate].
-  /// The result has the form:
-  /// ```json
-  /// {"role": "assistant", "content": "...", "reasoning_content": "...",
-  ///  "tool_calls": [{"id": "call_0", "type": "function",
-  ///                  "function": {"name": "...", "arguments": "{...}"}}]}
-  /// ```
-  /// 'reasoning_content' is present only when the text contains thinking
-  /// output, and 'tool_calls' only when it contains tool calls.
-  /// 'arguments' is a JSON string.
-  ///
-  /// The parser is built by [setPrompt]; calling this before [setPrompt], or
-  /// after [setTools] / [setThinking] without a new [setPrompt], throws an
-  /// Exception (AILIA_LLM_STATUS_INVALID_STATE). A text that does not match
-  /// the tool call syntax (e.g. an unfinished output) throws an Exception
-  /// (AILIA_LLM_STATUS_PARSE_ERROR). No executable partial result is returned;
-  /// arguments are never completed. Empty text returns an empty assistant
-  /// message if the parser state is valid.
   /// Convert the content of a message to the string passed to the native API.
   /// For role 'tool' a Map content is serialized as JSON.
   String _messageContent(Map<String, dynamic> message) {
@@ -322,7 +332,8 @@ class AiliaLLMModel {
   }
 
   /// Sets structured JSON history, required with tools. User content arrays
-  /// support text, image/audio with file_path or base64 data; load a projector first.
+  /// support text and image or audio with file_path or base64 data. Load a
+  /// matching projector first; submit image and audio in separate prompts.
   void setPromptJson(List<Map<String, dynamic>> messages) {
     if (pLLm == nullptr) throw Exception("ailia LLM not initialized.");
     final text = jsonEncode(messages).toNativeUtf8();
@@ -508,7 +519,8 @@ class AiliaLLMModel {
     return retCount;
   }
 
-  // Open multimodal projector file
+  /// Opens a matching vision/audio projector after [open]. Accepts a GGUF
+  /// projector or a self-contained, SoC-specific QNN projector package.
   void openMultimodalProjectorFile(String mmprojPath) {
     if (pLLm == nullptr) {
       throw Exception("ailia LLM not initialized.");
@@ -517,20 +529,23 @@ class AiliaLLMModel {
     int status;
     if (Platform.isWindows) {
       Pointer<WChar> path = mmprojPath.toNativeUtf16().cast<WChar>();
-      status = dllHandle.ailiaLLMOpenMultimodalProjectorFileW(pLLm.value, path);
+      status =
+          dllHandle.ailiaLLMOpenMultimodalProjectorFileW(pLLm.value, path);
       malloc.free(path);
     } else {
       Pointer<Char> path = mmprojPath.toNativeUtf8().cast<Char>();
-      status = dllHandle.ailiaLLMOpenMultimodalProjectorFileA(pLLm.value, path);
+      status =
+          dllHandle.ailiaLLMOpenMultimodalProjectorFileA(pLLm.value, path);
       malloc.free(path);
     }
     if (status != ailia_llm_dart.AILIA_LLM_STATUS_SUCCESS) {
-      throw Exception("ailiaLLMOpenMultimodalProjectorFile returned an error status $status");
+      throw Exception(
+          "ailiaLLMOpenMultimodalProjectorFile returned an error status $status");
     }
     _multimodalProjectorOpened = true;
   }
 
-  // Get multimodal capabilities
+  /// Returns `vision` and `audio` support flags for the opened projector.
   Map<String, bool> getMultimodalCapabilities() {
     if (pLLm == nullptr) {
       throw Exception("ailia LLM not initialized.");
@@ -539,7 +554,8 @@ class AiliaLLMModel {
     final Pointer<UnsignedInt> visionSupport = malloc<UnsignedInt>();
     final Pointer<UnsignedInt> audioSupport = malloc<UnsignedInt>();
 
-    int status = dllHandle.ailiaLLMGetMultimodalCapabilities(pLLm.value, visionSupport, audioSupport);
+    int status = dllHandle.ailiaLLMGetMultimodalCapabilities(
+        pLLm.value, visionSupport, audioSupport);
 
     bool vision = visionSupport.value != 0;
     bool audio = audioSupport.value != 0;
@@ -548,7 +564,8 @@ class AiliaLLMModel {
     malloc.free(audioSupport);
 
     if (status != ailia_llm_dart.AILIA_LLM_STATUS_SUCCESS) {
-      throw Exception("ailiaLLMGetMultimodalCapabilities returned an error status $status");
+      throw Exception(
+          "ailiaLLMGetMultimodalCapabilities returned an error status $status");
     }
 
     return {"vision": vision, "audio": audio};
@@ -557,7 +574,8 @@ class AiliaLLMModel {
   /// Internal implementation for multimodal prompts.
   void _setMultimodalPromptInternal(List<Map<String, dynamic>> messages) {
     // Allocate an array of AILIALLMMultimodalChatMessage and initialize it
-    final messagesPtr = calloc<ailia_llm_dart.AILIALLMMultimodalChatMessage>(messages.length);
+    final messagesPtr =
+        calloc<ailia_llm_dart.AILIALLMMultimodalChatMessage>(messages.length);
 
     try {
       for (var i = 0; i < messages.length; i++) {
@@ -576,10 +594,13 @@ class AiliaLLMModel {
         p.role = role.toNativeUtf8().cast<Char>();
 
         // Handle media data if present
-        if (messages[i].containsKey('media_data') && messages[i]['media_data'] != null) {
-          final mediaList = messages[i]['media_data'] as List<Map<String, dynamic>>;
+        if (messages[i].containsKey('media_data') &&
+            messages[i]['media_data'] != null) {
+          final mediaList =
+              messages[i]['media_data'] as List<Map<String, dynamic>>;
           if (mediaList.isNotEmpty) {
-            final mediaPtr = calloc<ailia_llm_dart.AILIALLMMediaData>(mediaList.length);
+            final mediaPtr =
+                calloc<ailia_llm_dart.AILIALLMMediaData>(mediaList.length);
             p.media_data = mediaPtr;
             p.media_count = mediaList.length;
 
@@ -587,10 +608,35 @@ class AiliaLLMModel {
               final media = mediaList[j];
               final mediaData = mediaPtr[j];
 
-              mediaData.media_type = (media['media_type'] as String).toNativeUtf8().cast<Char>();
-              mediaData.file_path = (media['file_path'] as String).toNativeUtf8().cast<Char>();
-              mediaData.data = nullptr;
-              mediaData.data_size = 0;
+              mediaData.media_type =
+                  (media['media_type'] as String).toNativeUtf8().cast<Char>();
+              final filePath = media['file_path'];
+              final data = media['data'];
+              if ((filePath is String && filePath.isNotEmpty) ==
+                  (data != null)) {
+                throw ArgumentError(
+                    'Exactly one of file_path or data is required for media_data');
+              }
+              mediaData.file_path = filePath is String
+                  ? filePath.toNativeUtf8().cast<Char>()
+                  : nullptr;
+              if (data != null) {
+                final bytes = data is Uint8List
+                    ? data
+                    : Uint8List.fromList((data as List).cast<int>());
+                if (bytes.isEmpty) {
+                  throw ArgumentError('Media data buffer must not be empty');
+                }
+                mediaData.data = malloc<UnsignedChar>(bytes.length);
+                mediaData.data
+                    .cast<Uint8>()
+                    .asTypedList(bytes.length)
+                    .setAll(0, bytes);
+                mediaData.data_size = bytes.length;
+              } else {
+                mediaData.data = nullptr;
+                mediaData.data_size = 0;
+              }
               mediaData.width = media['width'] ?? 0;
               mediaData.height = media['height'] ?? 0;
             }
@@ -608,13 +654,15 @@ class AiliaLLMModel {
       _buf = Uint8List(0);
       _beforeText = "";
 
-      int status = dllHandle.ailiaLLMSetMultimodalPrompt(pLLm.value, messagesPtr, messages.length);
+      int status = dllHandle.ailiaLLMSetMultimodalPrompt(
+          pLLm.value, messagesPtr, messages.length);
       if (status != ailia_llm_dart.AILIA_LLM_STATUS_SUCCESS) {
         if (status == ailia_llm_dart.AILIA_LLM_STATUS_CONTEXT_FULL) {
           _contextFull = true;
           return;
         }
-        throw Exception("ailiaLLMSetMultimodalPrompt returned an error status $status");
+        throw Exception(
+            "ailiaLLMSetMultimodalPrompt returned an error status $status");
       }
     } finally {
       // free strings and media data
@@ -635,6 +683,9 @@ class AiliaLLMModel {
             if (mediaData.file_path != nullptr) {
               malloc.free(mediaData.file_path);
             }
+            if (mediaData.data != nullptr) {
+              malloc.free(mediaData.data);
+            }
           }
           malloc.free(p.media_data);
         }
@@ -653,7 +704,8 @@ class AiliaLLMModel {
   /// - 'role' (String): The role (e.g., "system", "user", "assistant")
   /// - 'content' (String): The text content with <__media__> placeholders
   /// - 'media_data' (List<Map<String, dynamic>>, optional): Media attachments
-  @Deprecated('Use setPrompt() instead, which automatically detects media_data in messages.')
+  @Deprecated(
+      'Use setPrompt() instead, which automatically detects media_data in messages.')
   void setMultimodalPrompt(List<Map<String, dynamic>> messages) {
     // Delegate to the unified setPrompt() method to ensure consistent behavior
     // and projector-loaded checks.

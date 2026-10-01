@@ -143000,6 +143000,28 @@ class ailiaLlmFFI {
   late final _ailiaLLMGetBackendCount = _ailiaLLMGetBackendCountPtr
       .asFunction<int Function(ffi.Pointer<ffi.UnsignedInt>)>();
 
+  /// UTF-8 detail of the most recent native error. The library owns the string.
+  ffi.Pointer<ffi.Char> ailiaLLMGetErrorDetail(ffi.Pointer<AILIALLM> model) {
+    return _ailiaLLMGetErrorDetail(model);
+  }
+
+  late final _ailiaLLMGetErrorDetailPtr = _lookup<
+      ffi.NativeFunction<ffi.Pointer<ffi.Char> Function(ffi.Pointer<AILIALLM>)>>(
+      'ailiaLLMGetErrorDetail');
+  late final _ailiaLLMGetErrorDetail = _ailiaLLMGetErrorDetailPtr.asFunction<
+      ffi.Pointer<ffi.Char> Function(ffi.Pointer<AILIALLM>)>();
+
+  /// Gets the device QNN model name. The returned string is library-owned.
+  int ailiaLLMGetQNNModelName(ffi.Pointer<ffi.Pointer<ffi.Char>> modelName) {
+    return _ailiaLLMGetQNNModelName(modelName);
+  }
+
+  late final _ailiaLLMGetQNNModelNamePtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(ffi.Pointer<ffi.Pointer<ffi.Char>>)>>('ailiaLLMGetQNNModelName');
+  late final _ailiaLLMGetQNNModelName = _ailiaLLMGetQNNModelNamePtr.asFunction<
+      int Function(ffi.Pointer<ffi.Pointer<ffi.Char>>)>();
+
   /// \~japanese
   /// @brief 計算環境の一覧を取得します
   /// @param env 計算環境情報の格納先(AILIANetworkインスタンスを破棄するまで有効)
@@ -143631,7 +143653,7 @@ class ailiaLlmFFI {
   /// and set corresponding media data in media_data.
   /// Example: "Describe this image: <__media__>"
   /// The content of message is copied internally, so it can be freed after the call.
-  /// Raw data input is currently unsupported.
+  /// Encoded image/audio buffers are supported through media_data.
   int ailiaLLMSetMultimodalPrompt(
     ffi.Pointer<AILIALLM> llm,
     ffi.Pointer<AILIALLMMultimodalChatMessage> message,
@@ -145118,9 +145140,9 @@ final class _AILIALLMChatMessage extends ffi.Struct {
 }
 
 /// \~japanese
-/// @brief マルチモーダル用のメディアデータ構造体。オーディオキーワード、raw data入力は現在は未サポートで、将来的な実装のために予約されています。
+/// @brief 画像・音声入力用のメディアデータ構造体。ファイルパスまたはエンコード済みバッファを指定できます。
 /// \~english
-/// @brief Media data structure for multimodal processing. Audio keywords and raw data input are currently unsupported and reserved for future implementation.
+/// @brief Media data structure for image and audio input.
 final class _AILIALLMMediaData extends ffi.Struct {
   /// @brief Media type (image, audio)
   external ffi.Pointer<ffi.Char> media_type;
@@ -145135,11 +145157,11 @@ final class _AILIALLMMediaData extends ffi.Struct {
   @ffi.UnsignedInt()
   external int data_size;
 
-  /// @brief Width for images (pixels), sample count for audio
+  /// @brief Width for raw RGB images; use 0 for encoded image/audio data.
   @ffi.UnsignedInt()
   external int width;
 
-  /// @brief Height for images (pixels), unused for audio (set to 0)
+  /// @brief Height for raw RGB images; use 0 for encoded image/audio data.
   @ffi.UnsignedInt()
   external int height;
 }
@@ -145164,9 +145186,9 @@ final class _AILIALLMMultimodalChatMessage extends ffi.Struct {
 }
 
 /// \~japanese
-/// @brief マルチモーダル用のメディアデータ構造体。オーディオキーワード、raw data入力は現在は未サポートで、将来的な実装のために予約されています。
+/// @brief 画像・音声入力用のメディアデータ構造体。ファイルパスまたはエンコード済みバッファを指定できます。
 /// \~english
-/// @brief Media data structure for multimodal processing. Audio keywords and raw data input are currently unsupported and reserved for future implementation.
+/// @brief Media data structure for image and audio input.
 typedef AILIALLMMediaData = _AILIALLMMediaData;
 
 /// LLMオブジェクトのインスタンス
