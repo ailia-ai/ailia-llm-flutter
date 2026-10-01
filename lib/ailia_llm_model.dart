@@ -5,12 +5,23 @@ import 'dart:io';
 import 'package:ffi/ffi.dart';
 
 import 'ailia_llm.dart' as ailia_llm_dart;
-import 'src/backend_names.dart';
 
 const String BACKEND_CPU = "CPU";
 const String BACKEND_VULKAN = "Vulkan";
 const String BACKEND_METAL = "Metal";
 const String BACKEND_OPENCL = "OpenCL";
+
+/// Adds native backend indices only where device labels would be ambiguous.
+List<String> disambiguateBackendNames(List<String> names) {
+  final counts = <String, int>{};
+  for (final name in names) {
+    counts[name] = (counts[name] ?? 0) + 1;
+  }
+  return [
+    for (int i = 0; i < names.length; ++i)
+      counts[names[i]]! > 1 ? '${names[i]} [$i]' : names[i],
+  ];
+}
 
 String _ailiaCommonGetLlmPath() {
   if (Platform.isAndroid || Platform.isLinux) {
