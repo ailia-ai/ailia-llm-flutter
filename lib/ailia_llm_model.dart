@@ -158,6 +158,10 @@ class AiliaLLMModel {
   }
 
   /// Opens a GGUF model or a self-contained, SoC-specific QNN text package.
+  /// With no backend argument, GGUF uses automatic GPU fitting with CPU
+  /// fallback, while .qnn selects HTP (QNN). Explicit Metal/GPU selection
+  /// still fits layers to available memory, but requires some GPU offload.
+  /// CPU/GPU for .qnn or HTP for GGUF is rejected.
   /// Use [openMultimodalProjectorFile] afterwards for vision or audio.
   /// A context size of zero selects the package/model default.
   void open(String modelPath, int nCtx, {String backend = ""}) {
@@ -172,14 +176,9 @@ class AiliaLLMModel {
     if (backendList.isEmpty) {
       throw Exception('ailiaLLM no available backend found');
     }
-    // macOS/iOS previously used llama.cpp's automatic Metal-to-CPU fitting.
-    // Preserve that behavior when the caller did not request a backend.
-    final automatic = backend.isEmpty && (Platform.isMacOS || Platform.isIOS);
-    if (backend.isEmpty && !automatic) {
-      backend = _backendTypes.contains(BACKEND_CPU)
-          ? BACKEND_CPU
-          : backendList.first;
-    }
+    // The native API chooses GGUF GPU/CPU placement or QNN HTP by model format
+    // when the caller did not explicitly select a backend.
+    final automatic = backend.isEmpty;
     var backendIdx = automatic ? -1 : backendList.indexOf(backend);
     if (!automatic && backendIdx < 0) {
       backendIdx = _backendTypes.indexOf(backend);
