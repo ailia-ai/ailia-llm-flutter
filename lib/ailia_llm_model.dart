@@ -6,10 +6,20 @@ import 'package:ffi/ffi.dart';
 
 import 'ailia_llm.dart' as ailia_llm_dart;
 
+/// Selects the CPU backend.
 const String BACKEND_CPU = "CPU";
+
+/// Selects the first available Vulkan backend.
 const String BACKEND_VULKAN = "Vulkan";
+
+/// Selects the first available Metal backend.
 const String BACKEND_METAL = "Metal";
+
+/// Selects the first available OpenCL backend.
 const String BACKEND_OPENCL = "OpenCL";
+
+/// Selects the Qualcomm Hexagon HTP backend provided by QNN.
+const String BACKEND_HTP = "HTP (QNN)";
 
 /// Adds native backend indices only where device labels would be ambiguous.
 List<String> disambiguateBackendNames(List<String> names) {
