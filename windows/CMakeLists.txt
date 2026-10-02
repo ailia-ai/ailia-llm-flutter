@@ -63,12 +63,26 @@ if(AILIA_LLM_ARCH STREQUAL "arm64")
   # The arm64 build of the ailia LLM provides ailia_llm.dll only.
   set(ailia_llm_bundled_libraries
     "${CMAKE_CURRENT_SOURCE_DIR}/arm64/ailia_llm.dll"
+    "${CMAKE_CURRENT_SOURCE_DIR}/arm64/ailia_llm_qnn.dll"
+    "${CMAKE_CURRENT_SOURCE_DIR}/arm64/ggml-base.dll"
+    "${CMAKE_CURRENT_SOURCE_DIR}/arm64/ggml-cpu.dll"
+    "${CMAKE_CURRENT_SOURCE_DIR}/arm64/ggml-opencl.dll"
+    "${CMAKE_CURRENT_SOURCE_DIR}/arm64/ggml.dll"
+    "${CMAKE_CURRENT_SOURCE_DIR}/arm64/llama-common.dll"
+    "${CMAKE_CURRENT_SOURCE_DIR}/arm64/llama.dll"
     PARENT_SCOPE
   )
 else()
   set(ailia_llm_bundled_libraries
     "${CMAKE_CURRENT_SOURCE_DIR}/x64/ailia_llm.dll"
-    "${CMAKE_CURRENT_SOURCE_DIR}/x64/ailia_llm_fallback.dll"
+    "${CMAKE_CURRENT_SOURCE_DIR}/x64/ggml-base.dll"
+    "${CMAKE_CURRENT_SOURCE_DIR}/x64/ggml-cpu-alderlake.dll"
+    "${CMAKE_CURRENT_SOURCE_DIR}/x64/ggml-cpu-haswell.dll"
+    "${CMAKE_CURRENT_SOURCE_DIR}/x64/ggml-cpu-x64.dll"
+    "${CMAKE_CURRENT_SOURCE_DIR}/x64/ggml-vulkan.dll"
+    "${CMAKE_CURRENT_SOURCE_DIR}/x64/ggml.dll"
+    "${CMAKE_CURRENT_SOURCE_DIR}/x64/llama-common.dll"
+    "${CMAKE_CURRENT_SOURCE_DIR}/x64/llama.dll"
     PARENT_SCOPE
   )
 endif()

@@ -46,6 +46,13 @@ target_link_libraries(${PLUGIN_NAME} PRIVATE PkgConfig::GTK)
 # external build triggered from this build file.
 set(ailia_llm_bundled_libraries
   "${CMAKE_CURRENT_SOURCE_DIR}/x64/libailia_llm.so"
+  "${CMAKE_CURRENT_SOURCE_DIR}/x64/libggml-base.so"
+  "${CMAKE_CURRENT_SOURCE_DIR}/x64/libggml-cpu-alderlake.so"
+  "${CMAKE_CURRENT_SOURCE_DIR}/x64/libggml-cpu-haswell.so"
+  "${CMAKE_CURRENT_SOURCE_DIR}/x64/libggml-cpu-x64.so"
+  "${CMAKE_CURRENT_SOURCE_DIR}/x64/libggml.so"
+  "${CMAKE_CURRENT_SOURCE_DIR}/x64/libllama-common.so"
+  "${CMAKE_CURRENT_SOURCE_DIR}/x64/libllama.so"
   PARENT_SCOPE
 )
 
