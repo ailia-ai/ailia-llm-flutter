@@ -50,7 +50,7 @@ class _MyAppState extends State<MyApp> {
         _predictText = "Processing...";
       });
 
-      int nCtx = 2048;
+      int nCtx = 8192;
       _ailiaLlmModel.open(model_file.path, nCtx, backend: _backend);
 
       int startTime = DateTime.now().millisecondsSinceEpoch;
