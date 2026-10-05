@@ -15,7 +15,11 @@ A new Flutter plugin project.
   s.source           = { :path => '.' }
   s.source_files = 'Classes/**/*'
   s.vendored_libraries = '*.a'
-  s.libraries = ["ailia_llm", "common", "ggml", "llama"]
+  s.libraries = [
+    "ailia_llm", "cpp-httplib", "ggml-base", "ggml-blas", "ggml-cpu",
+    "ggml-metal", "ggml", "llama-common-base", "llama-common",
+    "llama", "vendor-hash"
+  ]
   s.dependency 'Flutter'
   s.platform = :ios, '11.0'
   s.framework = ["Accelerate", "MetalPerformanceShaders"]
