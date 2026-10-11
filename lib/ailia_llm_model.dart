@@ -241,6 +241,30 @@ class AiliaLLMModel {
     }
   }
 
+  /// Open an MTP assistant and enable draft/target verification decoding.
+  /// Use a matching Gemma 4 assistant GGUF, or assistant .qnn for a QNN target.
+  /// Call once after [open] and before setting a prompt.
+  /// Supports text generation with CPU/GPU Gemma 4 GGUF and QNN models.
+  /// [nDraft] is required: must be at least 1; QNN supports up to 3 draft tokens.
+  void openMtpModel(String assistantPath, int nDraft) {
+    if (pLLm == nullptr || pLLm.value == nullptr) {
+      throw Exception("ailia LLM not initialized.");
+    }
+    if (nDraft <= 0 || nDraft > 0xffffffff) {
+      throw ArgumentError.value(nDraft, 'nDraft', 'must be a positive unsigned 32-bit integer');
+    }
+    final path = assistantPath.toNativeUtf8().cast<Char>();
+    try {
+      final status = dllHandle.ailiaLLMOpenMtpModel(pLLm.value, path, nDraft);
+      if (status != ailia_llm_dart.AILIA_LLM_STATUS_SUCCESS) {
+        throw Exception(
+            "ailiaLLMOpenMtpModel returned an error status $status");
+      }
+    } finally {
+      malloc.free(path);
+    }
+  }
+
   /// Free memory allocated natively.
   void close() {
     if (pLLm != nullptr) {

@@ -227,6 +227,41 @@ class ailiaLlmFFI {
       int Function(ffi.Pointer<AILIALLM>, ffi.Pointer<ffi.WChar>, int)>();
 
   /// \~japanese
+  /// @brief MTPドラフトモデルを開き、生成をドラフト・本体検証経路に切り替えます。
+  /// @param llm LLMオブジェクト
+  /// @param path 対応するGemma 4 assistant GGUF、またはQNN本体用assistant .qnnのUTF-8パス
+  /// @param n_draft ドラフトトークン数（1以上）。QNNでは最大3。
+  /// @details 本体を開いた後、プロンプト設定前に一度呼び出します。
+  /// CPU/GPU Gemma 4 GGUFとQNNのテキスト生成に対応します。
+  /// 指定数のドラフトと本体の1トークンを合わせて検証します。
+  /// \~english
+  /// @brief Open an MTP assistant and enable draft/target verification decoding.
+  /// @param llm LLM instance
+  /// @param path UTF-8 path to a matching Gemma 4 assistant GGUF, or assistant .qnn for a QNN target
+  /// @param n_draft Number of draft tokens (at least 1). QNN supports up to 3.
+  /// @details Call once after opening the target and before setting a prompt.
+  /// Supports text generation with CPU/GPU Gemma 4 GGUF and QNN models.
+  /// Verify the requested draft tokens together with one target token.
+  int ailiaLLMOpenMtpModel(
+    ffi.Pointer<AILIALLM> llm,
+    ffi.Pointer<ffi.Char> path,
+    int n_draft,
+  ) {
+    return _ailiaLLMOpenMtpModel(
+      llm,
+      path,
+      n_draft,
+    );
+  }
+
+  late final _ailiaLLMOpenMtpModelPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(ffi.Pointer<AILIALLM>, ffi.Pointer<ffi.Char>,
+              ffi.UnsignedInt)>>('ailiaLLMOpenMtpModel');
+  late final _ailiaLLMOpenMtpModel = _ailiaLLMOpenMtpModelPtr.asFunction<
+      int Function(ffi.Pointer<AILIALLM>, ffi.Pointer<ffi.Char>, int)>();
+
+  /// \~japanese
   /// @brief コンテキストの長さを取得します。
   /// @param llm   LLMオブジェクトポインタ
   /// @param len  コンテキストの長さ

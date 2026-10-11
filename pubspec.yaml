@@ -1,6 +1,6 @@
 name: ailia_llm
 description: "ailia LLM for Flutter"
-version: 1.5.0+1
+version: 1.5.1
 homepage: https://ailia.ai/
 publish_to: none
 
