@@ -134,6 +134,38 @@ class ailiaLlmFFI {
       .asFunction<int Function(ffi.Pointer<AILIALLM>, int)>();
 
   /// \~japanese
+  /// @brief モデルを開く前にCPUスレッド数を設定します。
+  /// @param llm LLMインスタンス
+  /// @param n_threads スレッド数（0は自動設定）。
+  /// @return 成功時はAILIA_LLM_STATUS_SUCCESS。モデルを開いた後はAILIA_LLM_STATUS_INVALID_STATE。
+  /// @details 未指定の場合も0として扱います。Androidでは高効率コア（高性能側のbig/prime）の数を使用します。
+  /// 取得できない場合は既存のコア数判定を使用します。本体のDecode/Prefill、assistant、VLM/ALMのCPU推論スレッド数に同じ値を使用します。
+  ///
+  /// \~english
+  /// @brief Sets the CPU thread count before opening the model.
+  /// @param llm LLM instance
+  /// @param n_threads Thread count (0 selects automatically).
+  /// @return AILIA_LLM_STATUS_SUCCESS on success, or AILIA_LLM_STATUS_INVALID_STATE after a model is opened.
+  /// @details The default is 0 when this API is not called. On Android, automatic selection uses the number of performance (big/prime) cores.
+  /// If topology is unavailable, the existing core-count heuristic is used. Target decode/prefill, assistant and VLM/ALM CPU inference threads share this value.
+  int ailiaLLMSetNumThreads(
+    ffi.Pointer<AILIALLM> llm,
+    int n_threads,
+  ) {
+    return _ailiaLLMSetNumThreads(
+      llm,
+      n_threads,
+    );
+  }
+
+  late final _ailiaLLMSetNumThreadsPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(ffi.Pointer<AILIALLM>,
+              ffi.UnsignedInt)>>('ailiaLLMSetNumThreads');
+  late final _ailiaLLMSetNumThreads = _ailiaLLMSetNumThreadsPtr
+      .asFunction<int Function(ffi.Pointer<AILIALLM>, int)>();
+
+  /// \~japanese
   /// @brief LLMオブジェクトを作成します。
   /// @param llm LLMオブジェクトポインタへのポインタ
   /// @return
@@ -229,7 +261,7 @@ class ailiaLlmFFI {
   /// \~japanese
   /// @brief MTPドラフトモデルを開き、生成をドラフト・本体検証経路に切り替えます。
   /// @param llm LLMオブジェクト
-  /// @param path 対応するGemma 4 assistant GGUF、またはQNN本体用assistant .qnnのUTF-8パス
+  /// @param path 対応するGemma 4 assistant GGUF、またはQNN本体用assistant .qnnのパス（A: UTF-8、W: UTF-16）
   /// @param n_draft ドラフトトークン数（1以上）。QNNでは最大3。
   /// @details 本体を開いた後、プロンプト設定前に一度呼び出します。
   /// CPU/GPU Gemma 4 GGUFとQNNのテキスト生成に対応します。
@@ -237,29 +269,50 @@ class ailiaLlmFFI {
   /// \~english
   /// @brief Open an MTP assistant and enable draft/target verification decoding.
   /// @param llm LLM instance
-  /// @param path UTF-8 path to a matching Gemma 4 assistant GGUF, or assistant .qnn for a QNN target
+  /// @param path Path to a matching Gemma 4 assistant GGUF, or assistant .qnn for a QNN target (A: UTF-8, W: UTF-16)
   /// @param n_draft Number of draft tokens (at least 1). QNN supports up to 3.
   /// @details Call once after opening the target and before setting a prompt.
   /// Supports text generation with CPU/GPU Gemma 4 GGUF and QNN models.
   /// Verify the requested draft tokens together with one target token.
-  int ailiaLLMOpenMtpModel(
+  int ailiaLLMOpenMtpModelFileA(
     ffi.Pointer<AILIALLM> llm,
     ffi.Pointer<ffi.Char> path,
     int n_draft,
   ) {
-    return _ailiaLLMOpenMtpModel(
+    return _ailiaLLMOpenMtpModelFileA(
       llm,
       path,
       n_draft,
     );
   }
 
-  late final _ailiaLLMOpenMtpModelPtr = _lookup<
+  late final _ailiaLLMOpenMtpModelFileAPtr = _lookup<
       ffi.NativeFunction<
           ffi.Int Function(ffi.Pointer<AILIALLM>, ffi.Pointer<ffi.Char>,
-              ffi.UnsignedInt)>>('ailiaLLMOpenMtpModel');
-  late final _ailiaLLMOpenMtpModel = _ailiaLLMOpenMtpModelPtr.asFunction<
-      int Function(ffi.Pointer<AILIALLM>, ffi.Pointer<ffi.Char>, int)>();
+              ffi.UnsignedInt)>>('ailiaLLMOpenMtpModelFileA');
+  late final _ailiaLLMOpenMtpModelFileA =
+      _ailiaLLMOpenMtpModelFileAPtr.asFunction<
+          int Function(ffi.Pointer<AILIALLM>, ffi.Pointer<ffi.Char>, int)>();
+
+  int ailiaLLMOpenMtpModelFileW(
+    ffi.Pointer<AILIALLM> llm,
+    ffi.Pointer<ffi.WChar> path,
+    int n_draft,
+  ) {
+    return _ailiaLLMOpenMtpModelFileW(
+      llm,
+      path,
+      n_draft,
+    );
+  }
+
+  late final _ailiaLLMOpenMtpModelFileWPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(ffi.Pointer<AILIALLM>, ffi.Pointer<ffi.WChar>,
+              ffi.UnsignedInt)>>('ailiaLLMOpenMtpModelFileW');
+  late final _ailiaLLMOpenMtpModelFileW =
+      _ailiaLLMOpenMtpModelFileWPtr.asFunction<
+          int Function(ffi.Pointer<AILIALLM>, ffi.Pointer<ffi.WChar>, int)>();
 
   /// \~japanese
   /// @brief コンテキストの長さを取得します。
@@ -771,7 +824,7 @@ class ailiaLlmFFI {
   /// messageの内容は内部でコピーされるため、呼び出し後に開放することができます。
   /// 画像はファイルパス、エンコード済みバッファ（JPG、PNG等）、またはRaw RGBデータから読み込み可能です。
   /// 音声はWAV/MP3/FLACのファイルパスまたはエンコード済みバッファから読み込み可能です。
-  /// KVキャッシュの再利用では、ファイル入力はパス、バッファ入力は内容で同一性を判定します。
+  /// KVキャッシュの再利用では、ファイル入力とバッファ入力は内容のハッシュで同一性を判定します。
   ///
   /// \~english
   /// @brief Set multimodal prompt.
@@ -787,7 +840,7 @@ class ailiaLlmFFI {
   /// The content of message is copied internally, so it can be freed after the call.
   /// Images can be loaded from file path, encoded buffer (JPG, PNG, etc.), or raw RGB data.
   /// Audio accepts WAV/MP3/FLAC file paths or encoded buffers, with width/height=0.
-  /// KV cache reuse identifies file media by path and buffer media by content.
+  /// KV cache reuse identifies file and buffer media by their content hashes.
   /// @note With tools configured, returns INVALID_STATE. Use ailiaLLMSetPromptJson for tool use with media.
   int ailiaLLMSetMultimodalPrompt(
     ffi.Pointer<AILIALLM> llm,
