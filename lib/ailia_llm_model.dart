@@ -75,6 +75,7 @@ class AiliaLLMModel {
   Pointer<Pointer<ailia_llm_dart.AILIALLM>> pLLm = nullptr;
   dynamic dllHandle;
   bool _contextFull = false;
+  int _numThreads = 0;
   Uint8List _buf = Uint8List(0);
   String _beforeText = "";
   bool _multimodalProjectorOpened = false;
@@ -178,6 +179,26 @@ class AiliaLLMModel {
     }
   }
 
+  /// Sets the CPU thread count before [open].
+  /// [nThreads] is 0 for automatic selection, which is also the default.
+  /// On Android, automatic selection uses performance (big/prime) cores,
+  /// falling back to the existing core-count heuristic if topology is unavailable.
+  /// Target decode/prefill, assistant and VLM/ALM CPU inference threads share this value.
+  /// Throws an [ArgumentError] for values outside 0..INT_MAX, or an [Exception]
+  /// if the model is already open or the native operation fails.
+  void setNumThreads(int nThreads) {
+    if (nThreads < 0 || nThreads > 0x7fffffff) {
+      throw ArgumentError.value(nThreads, 'nThreads', 'must be between 0 and INT_MAX');
+    }
+    if (pLLm != nullptr && pLLm.value != nullptr) {
+      final status = dllHandle.ailiaLLMSetNumThreads(pLLm.value, nThreads);
+      if (status != ailia_llm_dart.AILIA_LLM_STATUS_SUCCESS) {
+        throw Exception('ailiaLLMSetNumThreads returned an error status $status');
+      }
+    }
+    _numThreads = nThreads;
+  }
+
   /// Opens a GGUF model or a self-contained, SoC-specific QNN text package.
   /// With no backend argument, GGUF uses automatic GPU fitting with CPU
   /// fallback, while .qnn selects HTP (QNN). Explicit Metal/GPU selection
@@ -218,6 +239,12 @@ class AiliaLLMModel {
       throw Exception("ailiaLLMCreate returned an error status $status");
     }
 
+    status = dllHandle.ailiaLLMSetNumThreads(pLLm.value, _numThreads);
+    if (status != 0) {
+      close();
+      throw Exception('ailiaLLMSetNumThreads returned an error status $status');
+    }
+
     if (!automatic) {
       status = dllHandle.ailiaLLMSetBackend(pLLm.value, backendIdx);
       if (status != 0) {
@@ -238,6 +265,34 @@ class AiliaLLMModel {
     if (status != 0) {
       close();
       throw Exception("ailiaLLMOpenModelFile returned an error status $status");
+    }
+  }
+
+  /// Open an MTP assistant and enable draft/target verification decoding.
+  /// Use a matching Gemma 4 assistant GGUF, or assistant .qnn for a QNN target.
+  /// Call once after [open] and before setting a prompt.
+  /// Supports text generation with CPU/GPU Gemma 4 GGUF and QNN models.
+  /// [nDraft] is required: must be at least 1; QNN supports up to 3 draft tokens.
+  void openMtpModel(String assistantPath, int nDraft) {
+    if (pLLm == nullptr || pLLm.value == nullptr) {
+      throw Exception("ailia LLM not initialized.");
+    }
+    if (nDraft <= 0 || nDraft > 0xffffffff) {
+      throw ArgumentError.value(nDraft, 'nDraft', 'must be a positive unsigned 32-bit integer');
+    }
+    final Pointer path = Platform.isWindows
+        ? assistantPath.toNativeUtf16().cast<WChar>()
+        : assistantPath.toNativeUtf8().cast<Char>();
+    try {
+      final status = Platform.isWindows
+          ? dllHandle.ailiaLLMOpenMtpModelFileW(pLLm.value, path.cast<WChar>(), nDraft)
+          : dllHandle.ailiaLLMOpenMtpModelFileA(pLLm.value, path.cast<Char>(), nDraft);
+      if (status != ailia_llm_dart.AILIA_LLM_STATUS_SUCCESS) {
+        throw Exception(
+            "ailiaLLMOpenMtpModelFile returned an error status $status");
+      }
+    } finally {
+      malloc.free(path);
     }
   }
 
