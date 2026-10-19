@@ -71,6 +71,7 @@ typedef VkEnumerateInstanceVersionDart = int Function(
 ///
 /// Call [open], set a prompt, then call [generate] until it returns null.
 /// Release the instance with [close] when it is no longer needed.
+/// When using QNN, call [close] on the same native thread that called [open].
 class AiliaLLMModel {
   static List<String> _backend = List<String>.empty();
   static List<String> _backendTypes = List<String>.empty();
@@ -232,6 +233,10 @@ class AiliaLLMModel {
   /// a constant selects the first matching device, and an empty string selects
   /// automatically. Any existing instance is closed before opening the model.
   /// Throws if the backend is unavailable or native initialization fails.
+  ///
+  /// Creates the native instance on the calling thread. When using QNN, call
+  /// [close] on that same native thread. Reopening an existing QNN instance must
+  /// also use that thread.
   void open(String modelPath, int nCtx, {String backend = ""}) {
     if (pLLm != nullptr) {
       close();
@@ -327,6 +332,11 @@ class AiliaLLMModel {
 
   /// Destroys the native model and releases its instance handle and projector.
   /// Safe to call repeatedly, including before [open].
+  ///
+  /// When using QNN, this method must be called on the same native thread that
+  /// called [open]. Moving only resource release to another thread, such as the
+  /// UI thread, may cause `QnnDevice_create failed: code 14001` when QNN is
+  /// subsequently used on a different thread.
   void close() {
     if (pLLm != nullptr) {
       if (pLLm.value != nullptr) {

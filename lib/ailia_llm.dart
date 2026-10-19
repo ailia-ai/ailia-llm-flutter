@@ -167,6 +167,10 @@ class ailiaLlmFFI {
   /// If this function is successful, it returns  [AILIA_LLM_STATUS_SUCCESS] , or an error code otherwise.
   ///
   /// Creates a LLM instance.
+  ///
+  /// Notes:
+  ///
+  /// When using QNN, the LLM instance must be destroyed by calling ailiaLLMDestroy on the same thread that called this function.
   int ailiaLLMCreate(
     ffi.Pointer<ffi.Pointer<AILIALLM>> llm,
   ) {
@@ -609,6 +613,12 @@ class ailiaLlmFFI {
   /// Parameters:
   ///
   /// - `llm`: A LLM instance pointer
+  ///
+  /// Notes:
+  ///
+  /// When using QNN, this function must be called on the same thread that called ailiaLLMCreate.
+  /// When using QNN, moving only the release operation to another thread, such as the UI thread, may cause
+  /// QnnDevice_create failed: code 14001 when QNN is subsequently used on a different thread.
   void ailiaLLMDestroy(
     ffi.Pointer<AILIALLM> llm,
   ) {
