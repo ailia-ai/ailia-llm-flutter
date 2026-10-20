@@ -20,17 +20,15 @@ class ailiaLlmFFI {
           lookup)
       : _lookup = lookup;
 
-  /// \~japanese
-  /// @brief 利用可能な計算環境(CPU, GPU, HTP (QNN))の数を取得します
-  /// @param env_count 計算環境情報の数の格納先
-  /// @return
-  /// 成功した場合は \ref AILIA_LLM_STATUS_SUCCESS 、そうでなければエラーコードを返す。
+  /// Gets the number of available computational environments (CPU, GPU, HTP (QNN)).
   ///
-  /// \~english
-  /// @brief Gets the number of available computational environments (CPU, GPU, HTP (QNN)).
-  /// @param env_count The storage location of the number of computational environment information
-  /// @return
-  /// If this function is successful, it returns  \ref AILIA_LLM_STATUS_SUCCESS , or an error code otherwise.
+  /// Parameters:
+  ///
+  /// - `env_count`: The storage location of the number of computational environment information
+  ///
+  /// Returns:
+  ///
+  /// If this function is successful, it returns  [AILIA_LLM_STATUS_SUCCESS] , or an error code otherwise.
   int ailiaLLMGetBackendCount(
     ffi.Pointer<ffi.UnsignedInt> env_count,
   ) {
@@ -45,19 +43,16 @@ class ailiaLlmFFI {
   late final _ailiaLLMGetBackendCount = _ailiaLLMGetBackendCountPtr
       .asFunction<int Function(ffi.Pointer<ffi.UnsignedInt>)>();
 
-  /// \~japanese
-  /// @brief 計算環境の一覧を取得します
-  /// @param env 計算環境名の格納先（ライブラリがロードされている間有効）
-  /// @param env_idx 計算環境情報のインデックス(0～ ailiaLLMGetBackendCount() -1)
-  /// @return
-  /// 成功した場合は \ref AILIA_LLM_STATUS_SUCCESS 、そうでなければエラーコードを返す。
+  /// Gets the list of computational environments.
   ///
-  /// \~english
-  /// @brief Gets the list of computational environments.
-  /// @param env Storage for the environment name (valid while the library remains loaded)
-  /// @param env_idx The index of the computational environment information (0 to  ailiaLLMGetBackendCount() -1)
-  /// @return
-  /// If this function is successful, it returns  \ref AILIA_LLM_STATUS_SUCCESS , or an error code otherwise.
+  /// Parameters:
+  ///
+  /// - `env`: Storage for the environment name (valid while the library remains loaded)
+  /// - `env_idx`: The index of the computational environment information (0 to  ailiaLLMGetBackendCount() -1)
+  ///
+  /// Returns:
+  ///
+  /// If this function is successful, it returns  [AILIA_LLM_STATUS_SUCCESS] , or an error code otherwise.
   int ailiaLLMGetBackendName(
     ffi.Pointer<ffi.Pointer<ffi.Char>> env,
     int env_idx,
@@ -75,17 +70,16 @@ class ailiaLlmFFI {
   late final _ailiaLLMGetBackendName = _ailiaLLMGetBackendNamePtr
       .asFunction<int Function(ffi.Pointer<ffi.Pointer<ffi.Char>>, int)>();
 
-  /// \~japanese
-  /// @brief 指定した計算環境のデバイス名を取得します。
-  /// @param name デバイス名の格納先（ライブラリがロードされている間有効）
-  /// @param env_idx ailiaLLMGetBackendCount() で列挙したインデックス
-  /// @return 成功時は AILIA_LLM_STATUS_SUCCESS。
+  /// Gets the device name for a computational environment.
   ///
-  /// \~english
-  /// @brief Gets the device name for a computational environment.
-  /// @param name Storage for the device name (valid while the library remains loaded)
-  /// @param env_idx Index enumerated by ailiaLLMGetBackendCount()
-  /// @return AILIA_LLM_STATUS_SUCCESS on success.
+  /// Parameters:
+  ///
+  /// - `name`: Storage for the device name (valid while the library remains loaded)
+  /// - `env_idx`: Index enumerated by ailiaLLMGetBackendCount()
+  ///
+  /// Returns:
+  ///
+  /// AILIA_LLM_STATUS_SUCCESS on success.
   int ailiaLLMGetBackendDeviceName(
     ffi.Pointer<ffi.Pointer<ffi.Char>> name,
     int env_idx,
@@ -103,19 +97,18 @@ class ailiaLlmFFI {
   late final _ailiaLLMGetBackendDeviceName = _ailiaLLMGetBackendDeviceNamePtr
       .asFunction<int Function(ffi.Pointer<ffi.Pointer<ffi.Char>>, int)>();
 
-  /// \~japanese
-  /// @brief モデルを開く前に、このインスタンスが使用するバックエンドを選択します。
-  /// @param llm LLMインスタンス
-  /// @param backend_idx ailiaLLMGetBackendCount/Nameで列挙したデバイスのインデックス
-  /// @return 成功時はAILIA_LLM_STATUS_SUCCESS。モデルを開いた後はAILIA_LLM_STATUS_INVALID_STATE。
-  /// @details 未指定の場合はモデル形式から自動選択します。HTP (QNN)は.qnn専用です。CPU/GPUを明示選択した場合は.qnnを開けません。切り替えるには新しいインスタンスでモデルを開き直してください。
+  /// Selects the backend for this instance before opening a model.
   ///
-  /// \~english
-  /// @brief Selects the backend for this instance before opening a model.
-  /// @param llm LLM instance
-  /// @param backend_idx Device index returned by ailiaLLMGetBackendCount/Name
-  /// @return AILIA_LLM_STATUS_SUCCESS on success, or AILIA_LLM_STATUS_INVALID_STATE after a model is opened.
-  /// @details Without a selection, the model format selects the backend automatically. HTP (QNN) accepts only .qnn; an explicit CPU/GPU selection rejects .qnn. Reopen the model in a new instance to switch.
+  /// Parameters:
+  ///
+  /// - `llm`: LLM instance
+  /// - `backend_idx`: Device index returned by ailiaLLMGetBackendCount/Name
+  ///
+  /// Returns:
+  ///
+  /// AILIA_LLM_STATUS_SUCCESS on success, or AILIA_LLM_STATUS_INVALID_STATE after a model is opened.
+  ///
+  /// Without a selection, the model format selects the backend automatically. HTP (QNN) accepts only .qnn; an explicit CPU/GPU selection rejects .qnn. Reopen the model in a new instance to switch.
   int ailiaLLMSetBackend(
     ffi.Pointer<AILIALLM> llm,
     int backend_idx,
@@ -133,21 +126,51 @@ class ailiaLlmFFI {
   late final _ailiaLLMSetBackend = _ailiaLLMSetBackendPtr
       .asFunction<int Function(ffi.Pointer<AILIALLM>, int)>();
 
-  /// \~japanese
-  /// @brief LLMオブジェクトを作成します。
-  /// @param llm LLMオブジェクトポインタへのポインタ
-  /// @return
-  /// 成功した場合は \ref AILIA_LLM_STATUS_SUCCESS 、そうでなければエラーコードを返す。
-  /// @details
-  /// LLMオブジェクトを作成します。
+  /// Sets the CPU thread count before opening the model.
   ///
-  /// \~english
-  /// @brief Creates a LLM instance.
-  /// @param llm A pointer to the LLM instance pointer
-  /// @return
-  /// If this function is successful, it returns  \ref AILIA_LLM_STATUS_SUCCESS , or an error code otherwise.
-  /// @details
+  /// Parameters:
+  ///
+  /// - `llm`: LLM instance
+  /// - `n_threads`: Thread count (0 selects automatically).
+  ///
+  /// Returns:
+  ///
+  /// AILIA_LLM_STATUS_SUCCESS on success, or AILIA_LLM_STATUS_INVALID_STATE after a model is opened.
+  ///
+  /// The default is 0 when this API is not called. On Android, automatic selection uses the number of performance (big/prime) cores.
+  /// If topology is unavailable, the existing core-count heuristic is used. Target decode/prefill, assistant and VLM/ALM CPU inference threads share this value.
+  int ailiaLLMSetNumThreads(
+    ffi.Pointer<AILIALLM> llm,
+    int n_threads,
+  ) {
+    return _ailiaLLMSetNumThreads(
+      llm,
+      n_threads,
+    );
+  }
+
+  late final _ailiaLLMSetNumThreadsPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(ffi.Pointer<AILIALLM>,
+              ffi.UnsignedInt)>>('ailiaLLMSetNumThreads');
+  late final _ailiaLLMSetNumThreads = _ailiaLLMSetNumThreadsPtr
+      .asFunction<int Function(ffi.Pointer<AILIALLM>, int)>();
+
   /// Creates a LLM instance.
+  ///
+  /// Parameters:
+  ///
+  /// - `llm`: A pointer to the LLM instance pointer
+  ///
+  /// Returns:
+  ///
+  /// If this function is successful, it returns  [AILIA_LLM_STATUS_SUCCESS] , or an error code otherwise.
+  ///
+  /// Creates a LLM instance.
+  ///
+  /// Notes:
+  ///
+  /// When using QNN, the LLM instance must be destroyed by calling ailiaLLMDestroy on the same thread that called this function.
   int ailiaLLMCreate(
     ffi.Pointer<ffi.Pointer<AILIALLM>> llm,
   ) {
@@ -163,31 +186,22 @@ class ailiaLlmFFI {
   late final _ailiaLLMCreate = _ailiaLLMCreatePtr
       .asFunction<int Function(ffi.Pointer<ffi.Pointer<AILIALLM>>)>();
 
-  /// \~japanese
-  /// @brief モデルファイルを読み込みます。
-  /// @param llm LLMオブジェクトポインタへのポインタ
-  /// @param path GGUFまたはailia QNNモデル（.qnn）のパス
-  /// @param n_ctx コンテキスト長（0でモデルのデフォルト）
-  /// @return
-  /// 成功した場合は \ref AILIA_LLM_STATUS_SUCCESS 、そうでなければエラーコードを返す。
-  /// @details
-  /// GGUFまたは自己完結ailia QNNモデルを読み込みます。バックエンド未選択なら
-  /// .qnnはHTPに、GGUFはCPU/GPUに自動振り分けされます。明示選択した場合は
-  /// バックエンドとモデル形式の一致が必要です。.qnnではn_ctx=0を指定すると
-  /// コンパイル済み固定contextを使用し、外部GGUF/Contextは不要です。
+  /// Open model file.
   ///
-  /// \~english
-  /// @brief Open model file.
-  /// @param llm A pointer to the LLM instance pointer
-  /// @param path Path to a GGUF or self-contained .qnn model
-  /// @param n_ctx Context length for model (0 is model default）
-  /// @return
-  /// If this function is successful, it returns  \ref AILIA_LLM_STATUS_SUCCESS , or an error code otherwise.
-  /// @details
+  /// Parameters:
+  ///
+  /// - `llm`: A pointer to the LLM instance pointer
+  /// - `path`: Path to a GGUF or self-contained .qnn model
+  /// - `n_ctx`: Context length for model (0 is model default）
+  ///
+  /// Returns:
+  ///
+  /// If this function is successful, it returns  [AILIA_LLM_STATUS_SUCCESS] , or an error code otherwise.
+  ///
   /// Opens a GGUF or self-contained ailia QNN model. Without an explicit backend
   /// selection, .qnn selects HTP and GGUF selects CPU/GPU automatically. An
-  /// explicit selection must match the model format. For .qnn, n_ctx=0 selects
-  /// its compiled static context and no external GGUF/context is needed.
+  /// explicit selection must match the model format. For .qnn, n_ctx=0 uses
+  /// the context length stored in the model.
   int ailiaLLMOpenModelFileA(
     ffi.Pointer<AILIALLM> llm,
     ffi.Pointer<ffi.Char> path,
@@ -226,19 +240,67 @@ class ailiaLlmFFI {
   late final _ailiaLLMOpenModelFileW = _ailiaLLMOpenModelFileWPtr.asFunction<
       int Function(ffi.Pointer<AILIALLM>, ffi.Pointer<ffi.WChar>, int)>();
 
-  /// \~japanese
-  /// @brief コンテキストの長さを取得します。
-  /// @param llm   LLMオブジェクトポインタ
-  /// @param len  コンテキストの長さ
-  /// @return
-  /// 成功した場合は \ref AILIA_LLM_STATUS_SUCCESS 、そうでなければエラーコードを返す。
+  /// Open an MTP assistant and enable draft/target verification decoding.
   ///
-  /// \~english
-  /// @brief Gets the size of context.
-  /// @param llm   A LLM instance pointer
-  /// @param len  The length of context
-  /// @return
-  /// If this function is successful, it returns  \ref AILIA_LLM_STATUS_SUCCESS , or an error code otherwise.
+  /// Parameters:
+  ///
+  /// - `llm`: LLM instance
+  /// - `path`: Path to a matching Gemma 4 assistant GGUF, or assistant .qnn for a QNN target (A: UTF-8, W: UTF-16)
+  /// - `n_draft`: Number of draft tokens (at least 1). QNN supports up to 3.
+  ///
+  /// Call once after opening the target and before setting a prompt.
+  /// Supports text generation with CPU/GPU Gemma 4 GGUF and QNN models.
+  /// Verify the requested draft tokens together with one target token.
+  int ailiaLLMOpenMtpModelFileA(
+    ffi.Pointer<AILIALLM> llm,
+    ffi.Pointer<ffi.Char> path,
+    int n_draft,
+  ) {
+    return _ailiaLLMOpenMtpModelFileA(
+      llm,
+      path,
+      n_draft,
+    );
+  }
+
+  late final _ailiaLLMOpenMtpModelFileAPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(ffi.Pointer<AILIALLM>, ffi.Pointer<ffi.Char>,
+              ffi.UnsignedInt)>>('ailiaLLMOpenMtpModelFileA');
+  late final _ailiaLLMOpenMtpModelFileA =
+      _ailiaLLMOpenMtpModelFileAPtr.asFunction<
+          int Function(ffi.Pointer<AILIALLM>, ffi.Pointer<ffi.Char>, int)>();
+
+  int ailiaLLMOpenMtpModelFileW(
+    ffi.Pointer<AILIALLM> llm,
+    ffi.Pointer<ffi.WChar> path,
+    int n_draft,
+  ) {
+    return _ailiaLLMOpenMtpModelFileW(
+      llm,
+      path,
+      n_draft,
+    );
+  }
+
+  late final _ailiaLLMOpenMtpModelFileWPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(ffi.Pointer<AILIALLM>, ffi.Pointer<ffi.WChar>,
+              ffi.UnsignedInt)>>('ailiaLLMOpenMtpModelFileW');
+  late final _ailiaLLMOpenMtpModelFileW =
+      _ailiaLLMOpenMtpModelFileWPtr.asFunction<
+          int Function(ffi.Pointer<AILIALLM>, ffi.Pointer<ffi.WChar>, int)>();
+
+  /// Gets the size of context.
+  ///
+  /// Parameters:
+  ///
+  /// - `llm`: A LLM instance pointer
+  /// - `len`: The length of context
+  ///
+  /// Returns:
+  ///
+  /// If this function is successful, it returns  [AILIA_LLM_STATUS_SUCCESS] , or an error code otherwise.
   int ailiaLLMGetContextSize(
     ffi.Pointer<AILIALLM> llm,
     ffi.Pointer<ffi.UnsignedInt> context_size,
@@ -256,28 +318,20 @@ class ailiaLlmFFI {
   late final _ailiaLLMGetContextSize = _ailiaLLMGetContextSizePtr.asFunction<
       int Function(ffi.Pointer<AILIALLM>, ffi.Pointer<ffi.UnsignedInt>)>();
 
-  /// \~japanese
-  /// @brief サンプリングのパラメータを設定します。
-  /// @param llm LLMオブジェクトポインタへのポインタ
-  /// @param top_k サンプリングする確率値の上位個数、デフォルト40
-  /// @param top_p サンプリングする確率値の範囲、デフォルト0.9（0.9〜1.0）
-  /// @param temp 温度パラメータ、デフォルト0.4
-  /// @param dist シード、デフォルト1234
-  /// @return
-  /// 成功した場合は \ref AILIA_LLM_STATUS_SUCCESS 、そうでなければエラーコードを返す。
-  /// @details
-  /// LLMのサンプリングの設定を行います。ailiaLLMSetPromptの前に実行する必要があります。
+  /// Set the sampling parameter.
   ///
-  /// \~english
-  /// @brief Set the sampling parameter.
-  /// @param llm A pointer to the LLM instance pointer
-  /// @param top_k Sampling probability value's top number, default 40
-  /// @param top_p Sampling probability value range, default 0.9 (0.9 to 1.0)
-  /// @param temp Temperature parameter, default 0.4
-  /// @param dist Seed, default 1234
-  /// @return
-  /// If this function is successful, it returns  \ref AILIA_LLM_STATUS_SUCCESS , or an error code otherwise.
-  /// @details
+  /// Parameters:
+  ///
+  /// - `llm`: A pointer to the LLM instance pointer
+  /// - `top_k`: Sampling probability value's top number, default 40
+  /// - `top_p`: Sampling probability value range, default 0.9 (0.9 to 1.0)
+  /// - `temp`: Temperature parameter, default 0.4
+  /// - `dist`: Seed, default 1234
+  ///
+  /// Returns:
+  ///
+  /// If this function is successful, it returns  [AILIA_LLM_STATUS_SUCCESS] , or an error code otherwise.
+  ///
   /// Set LLM sampling parameters. Must be run before ailiaLLMSetPrompt.
   int ailiaLLMSetSamplingParams(
     ffi.Pointer<AILIALLM> llm,
@@ -303,22 +357,17 @@ class ailiaLlmFFI {
       _ailiaLLMSetSamplingParamsPtr.asFunction<
           int Function(ffi.Pointer<AILIALLM>, int, double, double, int)>();
 
-  /// \~japanese
-  /// @brief Thinking（推論過程の出力）を有効または無効にします。
-  /// @param llm LLMオブジェクトポインタへのポインタ
-  /// @param enable 0で無効、0以外で有効（デフォルト：無効）
-  /// @return
-  /// 成功した場合は \ref AILIA_LLM_STATUS_SUCCESS 、そうでなければエラーコードを返す。
-  /// @details
-  /// Thinkingモデル（Gemma4等）の推論過程の出力を制御します。ailiaLLMSetPromptの前に実行する必要があります。
+  /// Enable or disable thinking (reasoning output).
   ///
-  /// \~english
-  /// @brief Enable or disable thinking (reasoning output).
-  /// @param llm A pointer to the LLM instance pointer
-  /// @param enable 0 to disable, non-zero to enable (default: disabled)
-  /// @return
-  /// If this function is successful, it returns  \ref AILIA_LLM_STATUS_SUCCESS , or an error code otherwise.
-  /// @details
+  /// Parameters:
+  ///
+  /// - `llm`: A pointer to the LLM instance pointer
+  /// - `enable`: 0 to disable, non-zero to enable (default: disabled)
+  ///
+  /// Returns:
+  ///
+  /// If this function is successful, it returns  [AILIA_LLM_STATUS_SUCCESS] , or an error code otherwise.
+  ///
   /// Controls whether thinking models (e.g. Gemma4) output their reasoning process.
   /// Must be called before ailiaLLMSetPrompt.
   int ailiaLLMSetThinking(
@@ -338,28 +387,18 @@ class ailiaLlmFFI {
   late final _ailiaLLMSetThinking = _ailiaLLMSetThinkingPtr
       .asFunction<int Function(ffi.Pointer<AILIALLM>, int)>();
 
-  /// \~japanese
-  /// @brief プロンプトを設定します。
-  /// @param llm LLMオブジェクトポインタへのポインタ
-  /// @param message メッセージの配列
-  /// @param message_cnt メッセージの数
-  /// @return
-  /// 成功した場合は \ref AILIA_LLM_STATUS_SUCCESS 、そうでなければエラーコードを返す。
-  /// @details
-  /// LLMに問い合わせるプロンプトを設定します。
-  /// ChatHistoryもmessageに含めてください。
-  /// ツール設定中はINVALID_STATEを返します。最初のuserメッセージからailiaLLMSetPromptJsonを使用してください。
-  /// ailiaLLMSetToolsでツールを解除すると本APIを再び使用できます。
-  /// messageの内容は内部でコピーされるため、呼び出し後に開放することができます。
+  /// Set the prompt.
   ///
-  /// \~english
-  /// @brief Set the prompt.
-  /// @param llm A pointer to the LLM instance pointer
-  /// @param message Array of messages
-  /// @param message_cnt Number of messages
-  /// @return
-  /// If this function is successful, it returns  \ref AILIA_LLM_STATUS_SUCCESS , or an error code otherwise.
-  /// @details
+  /// Parameters:
+  ///
+  /// - `llm`: A pointer to the LLM instance pointer
+  /// - `message`: Array of messages
+  /// - `message_cnt`: Number of messages
+  ///
+  /// Returns:
+  ///
+  /// If this function is successful, it returns  [AILIA_LLM_STATUS_SUCCESS] , or an error code otherwise.
+  ///
   /// Set the prompt to query the LLM.
   /// Please include ChatHistory in the message as well.
   /// Returns INVALID_STATE while tools are configured. Use ailiaLLMSetPromptJson from the first user message.
@@ -387,24 +426,17 @@ class ailiaLlmFFI {
       int Function(
           ffi.Pointer<AILIALLM>, ffi.Pointer<AILIALLMChatMessage>, int)>();
 
-  /// \~japanese
-  /// @brief 生成を行います。
-  /// @param llm LLMオブジェクトポインタ
-  /// @param done 生成が完了したか
-  /// @return
-  /// 成功した場合は \ref AILIA_LLM_STATUS_SUCCESS 、そうでなければエラーコードを返す。
-  /// @details
-  /// デコードした結果はailiaLLMGetDeltaText APIで取得します。
-  /// ailiaLLMGenerateを呼び出すたびに1トークンずつデコードします。
-  /// doneは0か1を取ります。doneが1の場合、生成完了となります。
+  /// Perform generate
   ///
-  /// \~english
-  /// @brief Perform generate
-  /// @param llm A LLM instance pointer
-  /// @param done Generation complete?
-  /// @return
-  /// If this function is successful, it returns  \ref AILIA_LLM_STATUS_SUCCESS , or an error code otherwise.
-  /// @details
+  /// Parameters:
+  ///
+  /// - `llm`: A LLM instance pointer
+  /// - `done`: Generation complete?
+  ///
+  /// Returns:
+  ///
+  /// If this function is successful, it returns  [AILIA_LLM_STATUS_SUCCESS] , or an error code otherwise.
+  ///
   /// The decoded result is obtained through the ailiaLLMGetDeltaText API.
   /// Each call to ailiaLLMGenerate decodes one token at a time.
   /// The value of done is 0 or 1. If done is 1, the generation is complete.
@@ -425,19 +457,16 @@ class ailiaLlmFFI {
   late final _ailiaLLMGenerate = _ailiaLLMGeneratePtr.asFunction<
       int Function(ffi.Pointer<AILIALLM>, ffi.Pointer<ffi.UnsignedInt>)>();
 
-  /// \~japanese
-  /// @brief テキストの長さを取得します。(NULL文字含む)
-  /// @param llm       LLMオブジェクトポインタ
-  /// @param buf_size  テキストの長さ
-  /// @return
-  /// 成功した場合は \ref AILIA_LLM_STATUS_SUCCESS 、そうでなければエラーコードを返す。
+  /// Gets the size of text. (Include null)
   ///
-  /// \~english
-  /// @brief Gets the size of text. (Include null)
-  /// @param llm       A LLM instance pointer
-  /// @param buf_size  The length of text
-  /// @return
-  /// If this function is successful, it returns  \ref AILIA_LLM_STATUS_SUCCESS , or an error code otherwise.
+  /// Parameters:
+  ///
+  /// - `llm`: A LLM instance pointer
+  /// - `buf_size`: The length of text
+  ///
+  /// Returns:
+  ///
+  /// If this function is successful, it returns  [AILIA_LLM_STATUS_SUCCESS] , or an error code otherwise.
   int ailiaLLMGetDeltaTextSize(
     ffi.Pointer<AILIALLM> llm,
     ffi.Pointer<ffi.UnsignedInt> buf_size,
@@ -456,25 +485,19 @@ class ailiaLlmFFI {
       _ailiaLLMGetDeltaTextSizePtr.asFunction<
           int Function(ffi.Pointer<AILIALLM>, ffi.Pointer<ffi.UnsignedInt>)>();
 
-  /// \~japanese
-  /// @brief テキストを取得します。
-  /// @param llm       LLMオブジェクトポインタ
-  /// @param text      テキスト(UTF8)
-  /// @param buf_size  バッファサイズ
-  /// @return
-  /// 成功した場合は \ref AILIA_LLM_STATUS_SUCCESS 、そうでなければエラーコードを返す。
-  /// @details
-  /// ailiaLLMGenerate() を一度も実行していない場合は \ref AILIA_LLM_STATUS_INVALID_STATE が返ります。
+  /// Gets the decoded text.
   ///
-  /// \~english
-  /// @brief Gets the decoded text.
-  /// @param llm       A LLM instance pointer
-  /// @param text      Text(UTF8)
-  /// @param buf_size  Buffer size
-  /// @return
-  /// If this function is successful, it returns  \ref AILIA_LLM_STATUS_SUCCESS , or an error code otherwise.
-  /// @details
-  /// If  ailiaLLMGenerate()  is not run at all, the function returns  \ref AILIA_LLM_STATUS_INVALID_STATE .
+  /// Parameters:
+  ///
+  /// - `llm`: A LLM instance pointer
+  /// - `text`: Text(UTF8)
+  /// - `buf_size`: Buffer size
+  ///
+  /// Returns:
+  ///
+  /// If this function is successful, it returns  [AILIA_LLM_STATUS_SUCCESS] , or an error code otherwise.
+  ///
+  /// If  ailiaLLMGenerate()  is not run at all, the function returns  [AILIA_LLM_STATUS_INVALID_STATE] .
   int ailiaLLMGetDeltaText(
     ffi.Pointer<AILIALLM> llm,
     ffi.Pointer<ffi.Char> text,
@@ -494,21 +517,17 @@ class ailiaLlmFFI {
   late final _ailiaLLMGetDeltaText = _ailiaLLMGetDeltaTextPtr.asFunction<
       int Function(ffi.Pointer<AILIALLM>, ffi.Pointer<ffi.Char>, int)>();
 
-  /// \~japanese
-  /// @brief トークンの数を取得します。
-  /// @param llm   LLMオブジェクトポインタ
-  /// @param cnt   トークンの数
-  /// @param text  テキスト(UTF8)
-  /// @return
-  /// 成功した場合は \ref AILIA_LLM_STATUS_SUCCESS 、そうでなければエラーコードを返す。
+  /// Gets the count of token.
   ///
-  /// \~english
-  /// @brief Gets the count of token.
-  /// @param llm   A LLM instance pointer
-  /// @param cnt   The count of token
-  /// @param text  Text(UTF8)
-  /// @return
-  /// If this function is successful, it returns  \ref AILIA_LLM_STATUS_SUCCESS , or an error code otherwise.
+  /// Parameters:
+  ///
+  /// - `llm`: A LLM instance pointer
+  /// - `cnt`: The count of token
+  /// - `text`: Text(UTF8)
+  ///
+  /// Returns:
+  ///
+  /// If this function is successful, it returns  [AILIA_LLM_STATUS_SUCCESS] , or an error code otherwise.
   int ailiaLLMGetTokenCount(
     ffi.Pointer<AILIALLM> llm,
     ffi.Pointer<ffi.UnsignedInt> cnt,
@@ -529,22 +548,17 @@ class ailiaLlmFFI {
       int Function(ffi.Pointer<AILIALLM>, ffi.Pointer<ffi.UnsignedInt>,
           ffi.Pointer<ffi.Char>)>();
 
-  /// \~japanese
-  /// @brief プロンプトトークンの数を取得します。
-  /// @param llm   LLMオブジェクトポインタ
-  /// @param cnt   プロンプトトークンの数
-  /// @return
-  /// 成功した場合は \ref AILIA_LLM_STATUS_SUCCESS 、そうでなければエラーコードを返す。
-  /// @details
-  /// ailiaLLMSetPromptを呼び出した後に呼び出し可能です。
+  /// Gets the count of prompt token.
   ///
-  /// \~english
-  /// @brief Gets the count of prompt token.
-  /// @param llm   A LLM instance pointer
-  /// @param cnt   The count of prompt token
-  /// @return
-  /// If this function is successful, it returns  \ref AILIA_LLM_STATUS_SUCCESS , or an error code otherwise.
-  /// @details
+  /// Parameters:
+  ///
+  /// - `llm`: A LLM instance pointer
+  /// - `cnt`: The count of prompt token
+  ///
+  /// Returns:
+  ///
+  /// If this function is successful, it returns  [AILIA_LLM_STATUS_SUCCESS] , or an error code otherwise.
+  ///
   /// It can be called after calling ailiaLLMSetPrompt.
   int ailiaLLMGetPromptTokenCount(
     ffi.Pointer<AILIALLM> llm,
@@ -564,22 +578,17 @@ class ailiaLlmFFI {
       _ailiaLLMGetPromptTokenCountPtr.asFunction<
           int Function(ffi.Pointer<AILIALLM>, ffi.Pointer<ffi.UnsignedInt>)>();
 
-  /// \~japanese
-  /// @brief 生成したトークンの数を取得します。
-  /// @param llm   LLMオブジェクトポインタ
-  /// @param cnt   生成したトークンの数
-  /// @return
-  /// 成功した場合は \ref AILIA_LLM_STATUS_SUCCESS 、そうでなければエラーコードを返す。
-  /// @details
-  /// ailiaLLMGenerateを呼び出した後に呼び出し可能です。
+  /// Gets the count of prompt token.
   ///
-  /// \~english
-  /// @brief Gets the count of prompt token.
-  /// @param llm   A LLM instance pointer
-  /// @param cnt   The count of generated token
-  /// @return
-  /// If this function is successful, it returns  \ref AILIA_LLM_STATUS_SUCCESS , or an error code otherwise.
-  /// @details
+  /// Parameters:
+  ///
+  /// - `llm`: A LLM instance pointer
+  /// - `cnt`: The count of generated token
+  ///
+  /// Returns:
+  ///
+  /// If this function is successful, it returns  [AILIA_LLM_STATUS_SUCCESS] , or an error code otherwise.
+  ///
   /// It can be called after calling ailiaLLMGenerate.
   int ailiaLLMGetGeneratedTokenCount(
     ffi.Pointer<AILIALLM> llm,
@@ -599,13 +608,17 @@ class ailiaLlmFFI {
       _ailiaLLMGetGeneratedTokenCountPtr.asFunction<
           int Function(ffi.Pointer<AILIALLM>, ffi.Pointer<ffi.UnsignedInt>)>();
 
-  /// \~japanese
-  /// @brief LLMオブジェクトを破棄します。
-  /// @param llm LLMオブジェクトポインタ
+  /// It destroys the LLM instance.
   ///
-  /// \~english
-  /// @brief It destroys the LLM instance.
-  /// @param llm A LLM instance pointer
+  /// Parameters:
+  ///
+  /// - `llm`: A LLM instance pointer
+  ///
+  /// Notes:
+  ///
+  /// When using QNN, this function must be called on the same thread that called ailiaLLMCreate.
+  /// When using QNN, moving only the release operation to another thread, such as the UI thread, may cause
+  /// QnnDevice_create failed: code 14001 when QNN is subsequently used on a different thread.
   void ailiaLLMDestroy(
     ffi.Pointer<AILIALLM> llm,
   ) {
@@ -620,31 +633,22 @@ class ailiaLlmFFI {
   late final _ailiaLLMDestroy =
       _ailiaLLMDestroyPtr.asFunction<void Function(ffi.Pointer<AILIALLM>)>();
 
-  /// \~japanese
-  /// @brief マルチモーダルプロジェクタファイルを読み込みます。
-  /// @param llm LLMオブジェクトポインタ
-  /// @param mmproj_path MMPROJ GGUFまたは自己完結ailia QNN projector（.qnn）のパス
-  /// @return
-  /// 成功した場合は \ref AILIA_LLM_STATUS_SUCCESS 、そうでなければエラーコードを返す。
-  /// @details
-  /// マルチモーダル機能を使用するには、先にailiaLLMOpenModelFileでテキストモデルを読み込み、
-  /// その後でこの関数でマルチモーダルプロジェクタを読み込む必要があります。
-  /// 画像入力（VLM）には画像対応、音声入力（ALM）には音声対応のmmproj GGUF、
-  /// または各入力用コンテキストを含む.qnnが必要です。画像入力（VLM）のみに対応する
-  /// 既存.qnnは音声入力（ALM）に対応しません。
+  /// Load multimodal projector file.
   ///
-  /// \~english
-  /// @brief Load multimodal projector file.
-  /// @param llm A LLM instance pointer
-  /// @param mmproj_path Path to an MMPROJ GGUF or self-contained ailia QNN projector (.qnn)
-  /// @return
-  /// If this function is successful, it returns  \ref AILIA_LLM_STATUS_SUCCESS , or an error code otherwise.
-  /// @details
+  /// Parameters:
+  ///
+  /// - `llm`: A LLM instance pointer
+  /// - `mmproj_path`: Path to an MMPROJ GGUF or self-contained ailia QNN projector (.qnn)
+  ///
+  /// Returns:
+  ///
+  /// If this function is successful, it returns  [AILIA_LLM_STATUS_SUCCESS] , or an error code otherwise.
+  ///
   /// To use multimodal features, you must first load the text model with ailiaLLMOpenModelFile,
   /// then load the multimodal projector with this function. A .qnn projector
   /// includes its device-specific context and needs no separate GGUF. Image input
   /// (VLM) requires a vision-capable projector, while audio input (ALM) requires
-  /// an audio-capable projector. Existing VLM-only packages do not support ALM.
+  /// an audio-capable projector.
   int ailiaLLMOpenMultimodalProjectorFileA(
     ffi.Pointer<AILIALLM> llm,
     ffi.Pointer<ffi.Char> mmproj_path,
@@ -681,24 +685,18 @@ class ailiaLlmFFI {
       _ailiaLLMOpenMultimodalProjectorFileWPtr.asFunction<
           int Function(ffi.Pointer<AILIALLM>, ffi.Pointer<ffi.WChar>)>();
 
-  /// \~japanese
-  /// @brief マルチモーダル機能がサポートされているかを確認します。
-  /// @param llm LLMオブジェクトポインタ
-  /// @param vision_support 画像入力（VLM）をサポートしているか
-  /// @param audio_support 音声入力（ALM）をサポートしているか
-  /// @return
-  /// 成功した場合は \ref AILIA_LLM_STATUS_SUCCESS 、そうでなければエラーコードを返す。
-  /// @details
-  /// ailiaLLMOpenMultimodalProjectorFileの後に呼び出し可能です。
+  /// Check if multimodal features are supported.
   ///
-  /// \~english
-  /// @brief Check if multimodal features are supported.
-  /// @param llm A LLM instance pointer
-  /// @param vision_support Whether image input (VLM) is supported
-  /// @param audio_support Whether audio input (ALM) is supported
-  /// @return
-  /// If this function is successful, it returns  \ref AILIA_LLM_STATUS_SUCCESS , or an error code otherwise.
-  /// @details
+  /// Parameters:
+  ///
+  /// - `llm`: A LLM instance pointer
+  /// - `vision_support`: Whether image input (VLM) is supported
+  /// - `audio_support`: Whether audio input (ALM) is supported
+  ///
+  /// Returns:
+  ///
+  /// If this function is successful, it returns  [AILIA_LLM_STATUS_SUCCESS] , or an error code otherwise.
+  ///
   /// Can be called after ailiaLLMOpenMultimodalProjectorFile.
   int ailiaLLMGetMultimodalCapabilities(
     ffi.Pointer<AILIALLM> llm,
@@ -722,38 +720,29 @@ class ailiaLlmFFI {
           int Function(ffi.Pointer<AILIALLM>, ffi.Pointer<ffi.UnsignedInt>,
               ffi.Pointer<ffi.UnsignedInt>)>();
 
-  /// \~japanese
-  /// @brief マルチモーダルプロンプトを設定します。
-  /// @param llm LLMオブジェクトポインタ
-  /// @param message マルチモーダルメッセージの配列
-  /// @param message_cnt メッセージの数
-  /// @return
-  /// 成功した場合は \ref AILIA_LLM_STATUS_SUCCESS 、そうでなければエラーコードを返す。
-  /// @details
-  /// マルチモーダル対応のプロンプトを設定します。メッセージのcontentに<__media__>プレースホルダーを含め、
-  /// 対応するメディアデータをmedia_dataに設定してください。
-  /// 例: "この画像について説明してください: <__media__>"
-  /// messageの内容は内部でコピーされるため、呼び出し後に開放することができます。
-  /// 画像はファイルパス、エンコード済みバッファ（JPG、PNG等）、またはRaw RGBデータから読み込み可能です。
-  /// 音声はWAV/MP3/FLACのファイルパスまたはエンコード済みバッファから読み込み可能です。
-  /// KVキャッシュの再利用では、ファイル入力はパス、バッファ入力は内容で同一性を判定します。
+  /// Set multimodal prompt.
   ///
-  /// \~english
-  /// @brief Set multimodal prompt.
-  /// @param llm A LLM instance pointer
-  /// @param message Array of multimodal messages
-  /// @param message_cnt Number of messages
-  /// @return
-  /// If this function is successful, it returns  \ref AILIA_LLM_STATUS_SUCCESS , or an error code otherwise.
-  /// @details
-  /// Set multimodal prompt. Include <__media__> placeholders in message content,
+  /// Parameters:
+  ///
+  /// - `llm`: A LLM instance pointer
+  /// - `message`: Array of multimodal messages
+  /// - `message_cnt`: Number of messages
+  ///
+  /// Returns:
+  ///
+  /// If this function is successful, it returns  [AILIA_LLM_STATUS_SUCCESS] , or an error code otherwise.
+  ///
+  /// Set multimodal prompt. Include `<__media__>` placeholders in message content,
   /// and set corresponding media data in media_data.
-  /// Example: "Describe this image: <__media__>"
+  /// Example: "Describe this image: `<__media__>`"
   /// The content of message is copied internally, so it can be freed after the call.
   /// Images can be loaded from file path, encoded buffer (JPG, PNG, etc.), or raw RGB data.
   /// Audio accepts WAV/MP3/FLAC file paths or encoded buffers, with width/height=0.
-  /// KV cache reuse identifies file media by path and buffer media by content.
-  /// @note With tools configured, returns INVALID_STATE. Use ailiaLLMSetPromptJson for tool use with media.
+  /// KV cache reuse identifies file and buffer media by their content hashes.
+  ///
+  /// Notes:
+  ///
+  /// With tools configured, returns INVALID_STATE. Use ailiaLLMSetPromptJson for tool use with media.
   int ailiaLLMSetMultimodalPrompt(
     ffi.Pointer<AILIALLM> llm,
     ffi.Pointer<AILIALLMMultimodalChatMessage> message,
@@ -777,19 +766,14 @@ class ailiaLlmFFI {
           int Function(ffi.Pointer<AILIALLM>,
               ffi.Pointer<AILIALLMMultimodalChatMessage>, int)>();
 
-  /// \~japanese
-  /// @brief OpenAI互換のツール定義JSON配列を設定します。NULL/空文字列/空配列で解除します。
-  /// @param llm LLMオブジェクト
-  /// @param tools_json UTF-8のツール定義
-  /// @details tools設定中はSetPrompt/SetMultimodalPromptがINVALID_STATEを返します。
-  /// 最初のuser入力からSetPromptJsonを使用し、Generateで生成後、GetResponseJsonでassistant JSONを取得します。
-  /// deltaはプレビュー用です。アプリ側で連結する必要はありません。結果はtool_call_idで返します。
-  /// 設定変更後は新しいプロンプトを設定してください。不正な定義はINVALID_ARGUMENTです。
-  /// \~english
-  /// @brief Sets OpenAI-compatible tool definitions. NULL, empty string or array clears tools.
-  /// @param llm LLM instance
-  /// @param tools_json UTF-8 tool definition array
-  /// @details SetPrompt/SetMultimodalPrompt return INVALID_STATE while tools are configured.
+  /// Sets OpenAI-compatible tool definitions. NULL, empty string or array clears tools.
+  ///
+  /// Parameters:
+  ///
+  /// - `llm`: LLM instance
+  /// - `tools_json`: UTF-8 tool definition array
+  ///
+  /// SetPrompt/SetMultimodalPrompt return INVALID_STATE while tools are configured.
   /// Use SetPromptJson from the first user input, generate, then retrieve assistant JSON with GetResponseJson.
   /// Deltas are optional previews; no concatenation is required. Return results using tool_call_id.
   /// Set a new prompt after changing tools. Invalid definitions return INVALID_ARGUMENT.
@@ -810,34 +794,13 @@ class ailiaLlmFFI {
   late final _ailiaLLMSetTools = _ailiaLLMSetToolsPtr
       .asFunction<int Function(ffi.Pointer<AILIALLM>, ffi.Pointer<ffi.Char>)>();
 
-  /// \~japanese
-  /// @brief 構造化されたJSON会話履歴からプロンプトを設定します。
-  /// @param llm LLMオブジェクトポインタ
-  /// @param messages_json UTF-8の空でないメッセージJSON配列（NULL終端）
-  /// @details
-  /// roleはsystem/user/assistant/tool、contentは文字列またはnullです。userはcontent配列にも対応します。
-  /// 配列要素は{"type":"text","text":"..."}、またはtypeがimage/audioでfile_path（ローカルファイル）か
-  /// data（標準Base64のエンコード済みファイル）を1つ指定します。JPEG/PNG、WAV/MP3/FLAC等に対応します。
-  /// メディアは対応projectorの読込が必要です。URL取得・生PCM/RGB・動画には対応しません。
-  /// 配列順に入力し、画像/音声を含む履歴は毎回評価します。
-  /// assistantのcontentをモデル固有構文として再解析しません。reasoning_contentとtool_callsを明示してください。
-  /// ailiaLLMGetResponseJsonの結果をassistantメッセージとしてそのまま追加できます。
-  /// tool_callsはtype="function"、空でないidとfunction.name、JSONオブジェクトを表す文字列function.argumentsを必要とします。
-  /// idはassistant内で一意とし、後続ターンでは再利用できます。
-  /// tool結果のcontentは文字列、tool_call_idは直前のassistantの呼び出しIDです。
-  /// 連続するtool結果は順序ではなくIDで対応付け、ツール名を補います。重複・不一致の結果は拒否します。
-  /// 不完全なargumentsは補完・破棄せずエラーとします。GetResponseJsonがPARSE_ERRORの場合は、
-  /// 失敗したassistantを追加せず、既存履歴に再試行を指示するuserメッセージを追加してください。
-  /// SetTools(NULL)後も過去のtool_callsとtool結果を入力できます。結果JSONはツール解除前に取得してください。
-  /// 入力は呼び出し後に解放できます。成功後はailiaLLMGenerateで生成します。
-  /// @return 成功時SUCCESS。不正なJSON・型・ID対応・引数はINVALID_ARGUMENT。
-  /// モデル未読込の場合はINVALID_STATE。
-  /// その他の生成準備エラーはailiaLLMSetPromptと同じです。
-  /// \~english
-  /// @brief Sets a prompt from structured JSON conversation history.
-  /// @param llm A LLM instance pointer
-  /// @param messages_json Nonempty UTF-8 JSON message array (null terminated)
-  /// @details
+  /// Sets a prompt from structured JSON conversation history.
+  ///
+  /// Parameters:
+  ///
+  /// - `llm`: A LLM instance pointer
+  /// - `messages_json`: Nonempty UTF-8 JSON message array (null terminated)
+  ///
   /// Roles are system/user/assistant/tool; content is a string or null. User content also accepts arrays.
   /// Parts are {"type":"text","text":"..."}, or type image/audio with exactly one of file_path (local file)
   /// and data (standard padded Base64 encoded file). JPEG/PNG and WAV/MP3/FLAC are supported by the decoder.
@@ -853,7 +816,10 @@ class ailiaLlmFFI {
   /// do not append the failed assistant; append a retry user message to the existing history.
   /// Historical tool calls/results remain accepted after SetTools(NULL). Retrieve response JSON before clearing tools.
   /// Input can be freed after the call. On success, generate with ailiaLLMGenerate.
-  /// @return SUCCESS on success; INVALID_ARGUMENT for invalid JSON, types, ID associations or arguments;
+  ///
+  /// Returns:
+  ///
+  /// SUCCESS on success; INVALID_ARGUMENT for invalid JSON, types, ID associations or arguments;
   /// INVALID_STATE if no model is loaded.
   /// Other prompt preparation errors are the same as ailiaLLMSetPrompt.
   int ailiaLLMSetPromptJson(
@@ -873,16 +839,14 @@ class ailiaLlmFFI {
   late final _ailiaLLMSetPromptJson = _ailiaLLMSetPromptJsonPtr
       .asFunction<int Function(ffi.Pointer<AILIALLM>, ffi.Pointer<ffi.Char>)>();
 
-  /// \~japanese
-  /// @brief SDK内部に蓄積した生成結果のassistant JSONサイズを取得します（NULL文字含む）。
-  /// @param llm LLMオブジェクト
-  /// @param buf_size 必要なバッファサイズ
-  /// @details ailiaLLMGetResponseJsonと同じ解析条件・エラーを適用します。
-  /// \~english
-  /// @brief Gets the buffered assistant JSON size, including the terminating null.
-  /// @param llm LLM instance
-  /// @param buf_size Required buffer size
-  /// @details Same parsing rules and errors as ailiaLLMGetResponseJson.
+  /// Gets the buffered assistant JSON size, including the terminating null.
+  ///
+  /// Parameters:
+  ///
+  /// - `llm`: LLM instance
+  /// - `buf_size`: Required buffer size
+  ///
+  /// Same parsing rules and errors as ailiaLLMGetResponseJson.
   int ailiaLLMGetResponseJsonSize(
     ffi.Pointer<AILIALLM> llm,
     ffi.Pointer<ffi.UnsignedInt> buf_size,
@@ -901,22 +865,15 @@ class ailiaLlmFFI {
       _ailiaLLMGetResponseJsonSizePtr.asFunction<
           int Function(ffi.Pointer<AILIALLM>, ffi.Pointer<ffi.UnsignedInt>)>();
 
-  /// \~japanese
-  /// @brief SDK内部に蓄積した生成結果を構造化assistant JSONとして取得します。
-  /// @param llm LLMオブジェクト
-  /// @param json UTF-8出力バッファ
-  /// @param buf_size バッファサイズ
-  /// @details Generateで生成した出力をSDKが連結します。GetDeltaTextの取得・連結は不要です。
-  /// 成功したJSONをSetPromptJsonの履歴配列に追加できます。新しいプロンプトで蓄積をリセットします。
-  /// 生成完了後に呼び出してください。未完了の呼び出し/ThinkingはPARSE_ERRORで、補完しません。
-  /// プロンプト未設定やtools/Thinking変更後はINVALID_STATE。生成前は空のassistantを返します。
-  /// NULL引数や不足したバッファはINVALID_ARGUMENTです。取得しても蓄積は消えません。
-  /// \~english
-  /// @brief Gets structured assistant JSON from output accumulated inside the SDK.
-  /// @param llm LLM instance
-  /// @param json UTF-8 output buffer
-  /// @param buf_size Buffer size
-  /// @details No GetDeltaText calls or application-side concatenation are required.
+  /// Gets structured assistant JSON from output accumulated inside the SDK.
+  ///
+  /// Parameters:
+  ///
+  /// - `llm`: LLM instance
+  /// - `json`: UTF-8 output buffer
+  /// - `buf_size`: Buffer size
+  ///
+  /// No GetDeltaText calls or application-side concatenation are required.
   /// Append the returned object to SetPromptJson history. A new prompt resets accumulated output.
   /// Call after generation completes. Unfinished calls/thinking return PARSE_ERROR without repair.
   /// An unset prompt or changed tools/thinking returns INVALID_STATE. Before generation, returns an empty assistant.
@@ -940,16 +897,15 @@ class ailiaLlmFFI {
   late final _ailiaLLMGetResponseJson = _ailiaLLMGetResponseJsonPtr.asFunction<
       int Function(ffi.Pointer<AILIALLM>, ffi.Pointer<ffi.Char>, int)>();
 
-  /// \~japanese
-  /// @brief モデル読み込み・プロンプト設定・推論APIの直近のエラー詳細を返します。
-  /// @return オブジェクト所有のUTF-8文字列。成功後は空文字列です。
-  /// @remark 次のモデル読み込み・プロンプト設定・推論API呼び出し、またはDestroyまで有効です。
-  /// QNNのエラーでは元の数値コード、失敗したAPI、取得可能な対象名を含みます。
-  /// 同じオブジェクトへの並列API呼び出しはサポートしません。
-  /// \~english
-  /// @brief Returns details of the last model-open, prompt-setup or generation error.
-  /// @return Object-owned UTF-8 string, empty after a successful operation.
-  /// @remark Valid until the next model-open, prompt-setup, generation call or Destroy.
+  /// Returns details of the last model-open, prompt-setup or generation error.
+  ///
+  /// Returns:
+  ///
+  /// Object-owned UTF-8 string, empty after a successful operation.
+  ///
+  /// Notes:
+  ///
+  /// Valid until the next model-open, prompt-setup, generation call or Destroy.
   /// QNN failures include the original code, failing API and object name when available.
   /// Concurrent calls on the same object are not supported. A null handle returns
   /// a static diagnostic string. This getter does not load the QNN plug-in.
@@ -968,36 +924,25 @@ class ailiaLlmFFI {
   late final _ailiaLLMGetErrorDetail = _ailiaLLMGetErrorDetailPtr
       .asFunction<ffi.Pointer<ffi.Char> Function(ffi.Pointer<AILIALLM>)>();
 
-  /// \~japanese
-  /// @brief 現在の端末に対応するQNNモデル名を取得します。
-  /// @param model_name QNNモデル名の格納先（例: "sm8475"）。返された文字列は
-  /// libraryが所有するため、呼び出し側で解放しないでください。
-  /// @return
-  /// 成功した場合は \ref AILIA_LLM_STATUS_SUCCESS 、そうでなければエラーコードを返す。
-  /// @details
-  /// 返される名前はailia_llm_compile_cが生成するtext modelのファイル名から
-  /// `.qnn`を除いた部分と一致します。画像入力（VLM）／音声入力（ALM）用projectorは
-  /// 同じ名前に`-mmproj.qnn`を付けたファイルです。QNNはAndroid arm64と
-  /// Windows ARM64に対応します。この呼び出しでQNN plug-inを初めて
-  /// 遅延loadします。未対応SoCでは \ref AILIA_LLM_STATUS_OTHER_ERROR 、plug-inが
-  /// 存在しない場合、およびBUILD_QNN以外では
-  /// \ref AILIA_LLM_STATUS_UNIMPLEMENTED を返します。
+  /// Gets the QNN model name for the current device.
   ///
-  /// \~english
-  /// @brief Gets the QNN model name for the current device.
-  /// @param model_name Storage for the QNN model name (for example, "sm8475").
-  /// The library owns the returned string; the caller must not free it.
-  /// @return
-  /// If this function is successful, it returns \ref AILIA_LLM_STATUS_SUCCESS,
+  /// Parameters:
+  ///
+  /// - `model_name`: Storage for the QNN model name (for example, "sm8475").
+  ///   The library owns the returned string; the caller must not free it.
+  ///
+  /// Returns:
+  ///
+  /// If this function is successful, it returns [AILIA_LLM_STATUS_SUCCESS],
   /// or an error code otherwise.
-  /// @details
+  ///
   /// The returned name matches the text model filename emitted by
   /// ailia_llm_compile_c, excluding `.qnn`. The image-input (VLM) / audio-input
   /// (ALM) projector uses the same name followed by `-mmproj.qnn`. QNN is
   /// supported on Android arm64 and Windows ARM64. This call lazily loads the QNN plug-in.
-  /// An unsupported SoC returns \ref AILIA_LLM_STATUS_OTHER_ERROR. A missing
+  /// An unsupported SoC returns [AILIA_LLM_STATUS_OTHER_ERROR]. A missing
   /// plug-in or a non-BUILD_QNN library returns
-  /// \ref AILIA_LLM_STATUS_UNIMPLEMENTED.
+  /// [AILIA_LLM_STATUS_UNIMPLEMENTED].
   int ailiaLLMGetQNNModelName(
     ffi.Pointer<ffi.Pointer<ffi.Char>> model_name,
   ) {
@@ -1016,96 +961,62 @@ class ailiaLlmFFI {
 
 /// チャットメッセージ
 final class _AILIALLMChatMessage extends ffi.Struct {
-  /// @brief Represent the role. (system, user, assistant, tool)
+  /// Represent the role. (system, user, assistant, tool)
   /// "tool" holds a tool result for tool use, see ailiaLLMSetTools.
   external ffi.Pointer<ffi.Char> role;
 
-  /// @brief Represent the content of the message.
+  /// Represent the content of the message.
   /// For role "tool" the content is the tool result, see ailiaLLMSetTools.
   external ffi.Pointer<ffi.Char> content;
 }
 
-/// \~japanese
-/// @brief マルチモーダル用の画像・音声データ構造体。音声には音声対応プロジェクタが必要です。
-/// 画像はファイルパス、エンコード済みバッファ（JPG、PNG等）、またはRaw RGBデータから読み込み可能です。
-/// エンコード済みバッファの対応フォーマットはJPG、PNG、TGA、BMP、PSD、GIF、HDR、PICです。
-/// \~english
-/// @brief Image/audio data for multimodal processing. Audio requires an audio-capable projector.
+/// Image/audio data for multimodal processing. Audio requires an audio-capable projector.
 /// Images can be loaded from file path, encoded buffer (JPG, PNG, etc.), or raw RGB data.
 /// Supported encoded buffer formats are JPG, PNG, TGA, BMP, PSD, GIF, HDR, and PIC.
 final class _AILIALLMMediaData extends ffi.Struct {
-  /// \~japanese
-  /// @brief メディアタイプ（image, audio）。audioには音声対応mmprojが必要です。
-  /// \~english
-  /// @brief Media type (image, audio). Audio requires an audio-capable mmproj.
+  /// Media type (image, audio). Audio requires an audio-capable mmproj.
   external ffi.Pointer<ffi.Char> media_type;
 
-  /// \~japanese
-  /// @brief メディアファイルへのパス（UTF-8）。dataが指定されている場合は無視されます。
-  /// \~english
-  /// @brief Path to the media file (UTF-8). Ignored if data is provided.
+  /// Path to the media file (UTF-8). Ignored if data is provided.
   external ffi.Pointer<ffi.Char> file_path;
 
-  /// \~japanese
-  /// @brief オプション：バッファからのメディアデータ（file_pathの代替）。
-  /// width/heightが0の場合はエンコード済みファイルバッファ（JPG、PNG等）として扱われます。
-  /// width/heightが指定されている場合はRaw RGBデータ（width * height * 3バイト）として扱われます。
-  /// audioではWAV/MP3/FLACファイルバッファを指定し、width/heightは0にします。Raw PCMは未対応です。
-  /// \~english
-  /// @brief Optional: Media data from buffer (alternative to file_path).
+  /// Optional: Media data from buffer (alternative to file_path).
   /// If width/height are 0, treated as encoded file buffer (JPG, PNG, etc.).
   /// If width/height are specified, treated as raw RGB data (width * height * 3 bytes).
   /// For audio, use an encoded WAV/MP3/FLAC buffer with width/height=0. Raw PCM is unsupported.
   external ffi.Pointer<ffi.UnsignedChar> data;
 
-  /// \~japanese
-  /// @brief バッファのサイズ（dataパラメータと共に使用）
-  /// \~english
-  /// @brief Size of the buffer (used with data parameter)
+  /// Size of the buffer (used with data parameter)
   @ffi.UnsignedInt()
   external int data_size;
 
-  /// \~japanese
-  /// @brief 画像の幅（ピクセル）。Raw RGBデータの場合のみ指定。エンコード済みバッファの場合は0を指定。
-  /// \~english
-  /// @brief Width for images (pixels). Only specify for raw RGB data. Set to 0 for encoded buffer.
+  /// Width for images (pixels). Only specify for raw RGB data. Set to 0 for encoded buffer.
   @ffi.UnsignedInt()
   external int width;
 
-  /// \~japanese
-  /// @brief 画像の高さ（ピクセル）。Raw RGBデータの場合のみ指定。エンコード済みバッファの場合は0を指定。
-  /// \~english
-  /// @brief Height for images (pixels). Only specify for raw RGB data. Set to 0 for encoded buffer.
+  /// Height for images (pixels). Only specify for raw RGB data. Set to 0 for encoded buffer.
   @ffi.UnsignedInt()
   external int height;
 }
 
-/// \~japanese
-/// @brief マルチモーダル対応チャットメッセージ
-/// \~english
-/// @brief Multimodal chat message with media attachments
+/// Multimodal chat message with media attachments
 final class _AILIALLMMultimodalChatMessage extends ffi.Struct {
-  /// @brief Represent the role. (system, user, assistant, tool)
+  /// Represent the role. (system, user, assistant, tool)
   /// "tool" holds a tool result for tool use, see ailiaLLMSetTools.
   external ffi.Pointer<ffi.Char> role;
 
-  /// @brief Represent the content of the message. Use <__media__> placeholder for media.
+  /// Represent the content of the message. Use `<__media__>` placeholder for media.
   external ffi.Pointer<ffi.Char> content;
 
-  /// @brief Array of media data (images, audio) referenced by <__media__> markers
+  /// Array of media data (images, audio) referenced by `<__media__>` markers
   external ffi.Pointer<AILIALLMMediaData> media_data;
 
-  /// @brief Number of media items in media_data array
+  /// Number of media items in media_data array
   @ffi.UnsignedInt()
   external int media_count;
 }
 
-/// \~japanese
-/// @brief マルチモーダル用の画像・音声データ構造体。音声には音声対応プロジェクタが必要です。
-/// 画像はファイルパス、エンコード済みバッファ（JPG、PNG等）、またはRaw RGBデータから読み込み可能です。
-/// エンコード済みバッファの対応フォーマットはJPG、PNG、TGA、BMP、PSD、GIF、HDR、PICです。
-/// \~english
-/// @brief Image/audio data for multimodal processing. Audio requires an audio-capable projector.
+/// Image/audio data for multimodal processing. Audio requires an audio-capable projector.
 /// Images can be loaded from file path, encoded buffer (JPG, PNG, etc.), or raw RGB data.
 /// Supported encoded buffer formats are JPG, PNG, TGA, BMP, PSD, GIF, HDR, and PIC.
 typedef AILIALLMMediaData = _AILIALLMMediaData;
@@ -1116,10 +1027,7 @@ final class AILIALLM extends ffi.Opaque {}
 /// チャットメッセージ
 typedef AILIALLMChatMessage = _AILIALLMChatMessage;
 
-/// \~japanese
-/// @brief マルチモーダル対応チャットメッセージ
-/// \~english
-/// @brief Multimodal chat message with media attachments
+/// Multimodal chat message with media attachments
 typedef AILIALLMMultimodalChatMessage = _AILIALLMMultimodalChatMessage;
 
 const int AILIA_LLM_STATUS_SUCCESS = 0;

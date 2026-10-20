@@ -21,7 +21,10 @@ const String BACKEND_OPENCL = "OpenCL";
 /// Selects the Qualcomm Hexagon HTP backend provided by QNN.
 const String BACKEND_HTP = "HTP (QNN)";
 
-/// Adds native backend indices only where device labels would be ambiguous.
+/// Returns unique display names for the backends in [names].
+///
+/// Repeated names receive their native list index, such as `Metal: GPU [0]`.
+/// Unique names and the original backend order are preserved.
 List<String> disambiguateBackendNames(List<String> names) {
   final counts = <String, int>{};
   for (final name in names) {
@@ -33,6 +36,7 @@ List<String> disambiguateBackendNames(List<String> names) {
   ];
 }
 
+/// Returns the platform-specific native library name, or `internal` for iOS.
 String _ailiaCommonGetLlmPath() {
   if (Platform.isAndroid || Platform.isLinux) {
     return 'libailia_llm.so';
@@ -46,6 +50,8 @@ String _ailiaCommonGetLlmPath() {
   return 'internal';
 }
 
+/// Loads the native library at [path], or uses the current process on iOS.
+/// Throws if the requested dynamic library cannot be opened.
 DynamicLibrary _ailiaCommonGetLibrary(String path) {
   final DynamicLibrary library;
   if (Platform.isIOS) {
@@ -61,12 +67,18 @@ typedef VkEnumerateInstanceVersionNative = Int32 Function(
 typedef VkEnumerateInstanceVersionDart = int Function(
     Pointer<Uint32> apiVersion);
 
+/// Manages a native LLM instance for text, image, audio and tool generation.
+///
+/// Call [open], set a prompt, then call [generate] until it returns null.
+/// Release the instance with [close] when it is no longer needed.
+/// When using QNN, call [close] on the same native thread that called [open].
 class AiliaLLMModel {
   static List<String> _backend = List<String>.empty();
   static List<String> _backendTypes = List<String>.empty();
   static DynamicLibrary? _sharedLibrary;
   static ailia_llm_dart.ailiaLlmFFI? _sharedApi;
 
+  /// Lazily loads and caches the native library and its shared FFI bindings.
   static ailia_llm_dart.ailiaLlmFFI _getApi() {
     _sharedLibrary ??= _ailiaCommonGetLibrary(_ailiaCommonGetLlmPath());
     return _sharedApi ??= ailia_llm_dart.ailiaLlmFFI(_sharedLibrary!);
@@ -75,13 +87,16 @@ class AiliaLLMModel {
   Pointer<Pointer<ailia_llm_dart.AILIALLM>> pLLm = nullptr;
   dynamic dllHandle;
   bool _contextFull = false;
+  int _numThreads = 0;
   Uint8List _buf = Uint8List(0);
   String _beforeText = "";
   bool _multimodalProjectorOpened = false;
 
+  /// Creates an unopened model; call [open] before setting prompts or generating.
   AiliaLLMModel() {}
 
-  /// Detail of the last failed native call on this model.
+  /// Returns the native error detail for this model.
+  /// Returns an empty string if the instance or its error detail is unavailable.
   String getErrorDetail() {
     if (pLLm == nullptr || pLLm.value == nullptr) return '';
     final detail = dllHandle.ailiaLLMGetErrorDetail(pLLm.value) as Pointer<Char>;
@@ -108,6 +123,9 @@ class AiliaLLMModel {
     }
   }
 
+  /// Returns whether the Vulkan loader reports support for Vulkan 1.1 or later.
+  /// Returns false if the loader or version query is unavailable or fails.
+  /// This checks the loader version, not a particular device's capabilities.
   static bool checkVulkanVersion() {
     try {
       final DynamicLibrary vulkanLib = Platform.isWindows
@@ -134,6 +152,11 @@ class AiliaLLMModel {
     return false;
   }
 
+  /// Returns a cached, unmodifiable list of available backend display names.
+  ///
+  /// Names follow native backend order and may include a device name and index.
+  /// Pass a returned name to [open] to select that device explicitly.
+  /// Throws if the native library cannot be loaded or backend discovery fails.
   static List<String> getBackendList() {
     if (_backend.isNotEmpty) {
       return List<String>.unmodifiable(_backend);
@@ -178,13 +201,42 @@ class AiliaLLMModel {
     }
   }
 
+  /// Sets the CPU thread count before [open].
+  /// [nThreads] is 0 for automatic selection, which is also the default.
+  /// On Android, automatic selection uses performance (big/prime) cores,
+  /// falling back to the existing core-count heuristic if topology is unavailable.
+  /// Target decode/prefill, assistant and VLM/ALM CPU inference threads share this value.
+  /// Throws an [ArgumentError] for values outside 0..INT_MAX, or an [Exception]
+  /// if the model is already open or the native operation fails.
+  void setNumThreads(int nThreads) {
+    if (nThreads < 0 || nThreads > 0x7fffffff) {
+      throw ArgumentError.value(nThreads, 'nThreads', 'must be between 0 and INT_MAX');
+    }
+    if (pLLm != nullptr && pLLm.value != nullptr) {
+      final status = dllHandle.ailiaLLMSetNumThreads(pLLm.value, nThreads);
+      if (status != ailia_llm_dart.AILIA_LLM_STATUS_SUCCESS) {
+        throw Exception('ailiaLLMSetNumThreads returned an error status $status');
+      }
+    }
+    _numThreads = nThreads;
+  }
+
   /// Opens a GGUF model or a self-contained, SoC-specific QNN text package.
   /// With no backend argument, GGUF uses automatic GPU fitting with CPU
   /// fallback, while .qnn selects HTP (QNN). Explicit Metal/GPU selection
   /// still fits layers to available memory, but requires some GPU offload.
   /// CPU/GPU for .qnn or HTP for GGUF is rejected.
   /// Use [openMultimodalProjectorFile] afterwards for vision or audio.
+  /// [modelPath] is the model file path; [nCtx] is the context size in tokens.
   /// A context size of zero selects the package/model default.
+  /// [backend] accepts a name from [getBackendList] or a backend constant;
+  /// a constant selects the first matching device, and an empty string selects
+  /// automatically. Any existing instance is closed before opening the model.
+  /// Throws if the backend is unavailable or native initialization fails.
+  ///
+  /// Creates the native instance on the calling thread. When using QNN, call
+  /// [close] on that same native thread. Reopening an existing QNN instance must
+  /// also use that thread.
   void open(String modelPath, int nCtx, {String backend = ""}) {
     if (pLLm != nullptr) {
       close();
@@ -218,6 +270,12 @@ class AiliaLLMModel {
       throw Exception("ailiaLLMCreate returned an error status $status");
     }
 
+    status = dllHandle.ailiaLLMSetNumThreads(pLLm.value, _numThreads);
+    if (status != 0) {
+      close();
+      throw Exception('ailiaLLMSetNumThreads returned an error status $status');
+    }
+
     if (!automatic) {
       status = dllHandle.ailiaLLMSetBackend(pLLm.value, backendIdx);
       if (status != 0) {
@@ -241,7 +299,44 @@ class AiliaLLMModel {
     }
   }
 
-  /// Free memory allocated natively.
+  /// Open an MTP assistant and enable draft/target verification decoding.
+  /// Use a matching Gemma 4 assistant GGUF, or assistant .qnn for a QNN target.
+  /// Call once after [open] and before setting a prompt.
+  /// Supports text generation with CPU/GPU Gemma 4 GGUF and QNN models.
+  /// [assistantPath] is the assistant model file path.
+  /// [nDraft] is required: must be at least 1; QNN supports up to 3 draft tokens.
+  /// Throws an [ArgumentError] if [nDraft] is not a positive unsigned 32-bit
+  /// integer, or an [Exception] if the target is unopened or loading fails.
+  void openMtpModel(String assistantPath, int nDraft) {
+    if (pLLm == nullptr || pLLm.value == nullptr) {
+      throw Exception("ailia LLM not initialized.");
+    }
+    if (nDraft <= 0 || nDraft > 0xffffffff) {
+      throw ArgumentError.value(nDraft, 'nDraft', 'must be a positive unsigned 32-bit integer');
+    }
+    final Pointer path = Platform.isWindows
+        ? assistantPath.toNativeUtf16().cast<WChar>()
+        : assistantPath.toNativeUtf8().cast<Char>();
+    try {
+      final status = Platform.isWindows
+          ? dllHandle.ailiaLLMOpenMtpModelFileW(pLLm.value, path.cast<WChar>(), nDraft)
+          : dllHandle.ailiaLLMOpenMtpModelFileA(pLLm.value, path.cast<Char>(), nDraft);
+      if (status != ailia_llm_dart.AILIA_LLM_STATUS_SUCCESS) {
+        throw Exception(
+            "ailiaLLMOpenMtpModelFile returned an error status $status");
+      }
+    } finally {
+      malloc.free(path);
+    }
+  }
+
+  /// Destroys the native model and releases its instance handle and projector.
+  /// Safe to call repeatedly, including before [open].
+  ///
+  /// When using QNN, this method must be called on the same native thread that
+  /// called [open]. Moving only resource release to another thread, such as the
+  /// UI thread, may cause `QnnDevice_create failed: code 14001` when QNN is
+  /// subsequently used on a different thread.
   void close() {
     if (pLLm != nullptr) {
       if (pLLm.value != nullptr) {
@@ -255,6 +350,12 @@ class AiliaLLMModel {
     _multimodalProjectorOpened = false;
   }
 
+  /// Sets token sampling parameters after [open] and before setting a prompt.
+  ///
+  /// [top_k] limits the number of candidate tokens; [top_p] controls their
+  /// cumulative probability threshold; [temp] is the sampling temperature;
+  /// [dist] is the random seed. Native defaults are 40, 0.9, 0.4 and 1234.
+  /// Throws if the model is unopened or the native operation fails.
   void setSamplingParams(int top_k, double top_p, double temp, int dist) {
     if (pLLm == nullptr) {
       throw Exception("ailia LLM not initialized.");
@@ -269,7 +370,9 @@ class AiliaLLMModel {
 
   /// Enable or disable thinking (reasoning output).
   /// Controls whether thinking models (e.g. Gemma4) output their reasoning process.
-  /// Must be called before setPrompt.
+  /// [enable] selects whether reasoning output is enabled.
+  /// Call after [open] and before [setPrompt] or [setPromptJson].
+  /// Throws if the model is unopened or the native operation fails.
   void setThinking(bool enable) {
     if (pLLm == nullptr) {
       throw Exception("ailia LLM not initialized.");
@@ -281,7 +384,8 @@ class AiliaLLMModel {
     }
   }
 
-  /// Check if any message in the list contains media_data.
+  /// Returns whether [messages] contains a non-empty `media_data` list.
+  /// Missing, null and empty media lists select the text-only path.
   bool _hasMediaData(List<Map<String, dynamic>> messages) {
     for (var message in messages) {
       if (message.containsKey('media_data') && message['media_data'] != null) {
@@ -323,6 +427,8 @@ class AiliaLLMModel {
   /// and getResponseJson. Deltas remain available for streaming previews.
   ///
   /// Available for models whose chat template supports tool calling (e.g. Gemma 4).
+  /// Call after [open]; throws if the instance is unopened, the definitions
+  /// cannot be serialized to JSON, or the native operation fails.
   void setTools(List<Map<String, dynamic>>? tools) {
     if (pLLm == nullptr) {
       throw Exception("ailia LLM not initialized.");
@@ -342,7 +448,8 @@ class AiliaLLMModel {
   }
 
   /// Convert the content of a message to the string passed to the native API.
-  /// For role 'tool' a Map content is serialized as JSON.
+  /// For role `tool`, non-string content is serialized as JSON.
+  /// Other roles require string content; invalid content throws.
   String _messageContent(Map<String, dynamic> message) {
     final content = message['content'];
     if (message['role'] == 'tool' && content is! String) {
@@ -354,6 +461,11 @@ class AiliaLLMModel {
   /// Sets structured JSON history, required with tools. User content arrays
   /// support text and image or audio with file_path or base64 data. Load a
   /// matching projector first; submit image and audio in separate prompts.
+  /// [messages] is the complete conversation history, including assistant tool
+  /// calls and tool results with matching `tool_call_id` values when applicable.
+  /// Resets streaming text on success. Throws if the model is unopened, JSON
+  /// encoding fails, or the native operation fails (including context overflow).
+  /// Use [contextFull] to inspect whether the prompt exceeded the context.
   void setPromptJson(List<Map<String, dynamic>> messages) {
     if (pLLm == nullptr) throw Exception("ailia LLM not initialized.");
     final text = jsonEncode(messages).toNativeUtf8();
@@ -366,7 +478,11 @@ class AiliaLLMModel {
     } finally { malloc.free(text); }
   }
 
-  /// Gets buffered assistant JSON after generation; no delta concatenation needed.
+  /// Returns the buffered assistant message as a decoded JSON object.
+  ///
+  /// After generation completes for [setPromptJson], append this object to the
+  /// history. It can include `tool_calls`; delta concatenation is unnecessary.
+  /// Throws if the model is unopened, retrieval fails or the JSON is invalid.
   Map<String, dynamic> getResponseJson() {
     if (pLLm == nullptr) throw Exception("ailia LLM not initialized.");
     final size = calloc<UnsignedInt>();
@@ -382,6 +498,20 @@ class AiliaLLMModel {
     } finally { calloc.free(size); }
   }
 
+  /// Sets the complete conversation history for text or multimodal generation.
+  ///
+  /// Each entry in [messages] requires string `role` and `content` fields.
+  /// Media entries use a non-empty `media_data` list and `<__media__>` content
+  /// placeholders. Each attachment requires `media_type` (`image` or `audio`)
+  /// and exactly one of a non-empty `file_path` or a non-empty `data` byte list
+  /// ([Uint8List] or `List<int>`); optional `width` and `height` default to zero.
+  /// Load a matching projector with [openMultimodalProjectorFile] before
+  /// submitting media. Missing, null or empty media lists use the text-only API.
+  ///
+  /// Resets streaming text for the new prompt. If the context is full, sets
+  /// [contextFull] and returns; other failures throw. Throws for an unopened
+  /// model, invalid messages or media without a loaded projector.
+  /// While tools are configured with [setTools], use [setPromptJson] instead.
   void setPrompt(List<Map<String, dynamic>> messages) {
     if (pLLm == nullptr) {
       throw Exception("ailia LLM not initialized.");
@@ -404,7 +534,9 @@ class AiliaLLMModel {
     }
   }
 
-  /// Internal implementation for text-only prompts.
+  /// Converts [messages] to native text messages and submits the prompt.
+  /// Resets streaming state, records context overflow and frees temporary data.
+  /// Throws for missing message fields or other native errors.
   void _setTextPromptInternal(List<Map<String, dynamic>> messages) {
     // Allocate an array of ailia_llm_chat_message_t and initialize it
     // with the messages data.
@@ -456,8 +588,14 @@ class AiliaLLMModel {
     }
   }
 
-  /// Ask the model to generate the next token.
-  /// This function properly handle incomplete multi-byte utf8 character.
+  /// Advances generation and returns the newly decoded text fragment.
+  ///
+  /// Call after [setPrompt] or [setPromptJson] and repeat until null is returned.
+  /// Returns an empty string when no complete UTF-8 text is available yet;
+  /// incomplete multibyte characters are buffered for later calls.
+  /// Returns null when generation finishes or the context is full; inspect
+  /// [contextFull] to distinguish context overflow.
+  /// Throws if the model is unopened or generation fails for another reason.
   String? generate() {
     if (pLLm == nullptr) {
       throw Exception("ailia LLM not initialized.");
@@ -521,11 +659,14 @@ class AiliaLLMModel {
     return deltaText;
   }
 
+  /// Returns whether the latest prompt submission or generation hit its context
+  /// limit. Initially false; prompt submission and generation update this flag.
   bool contextFull() {
     return _contextFull;
   }
 
-  // Get token count
+  /// Returns the number of tokens in [text] using the opened model's tokenizer.
+  /// Call after [open]; throws if the model is unopened.
   int getTokenCount(String text) {
     if (pLLm == nullptr) {
       throw Exception("ailia LLM not initialized.");
@@ -541,6 +682,9 @@ class AiliaLLMModel {
 
   /// Opens a matching vision/audio projector after [open]. Accepts a GGUF
   /// projector or a self-contained, SoC-specific QNN projector package.
+  /// [mmprojPath] is the projector file path. Load it before submitting media
+  /// with [setPrompt] or [setPromptJson].
+  /// Throws if the model is unopened or projector loading fails.
   void openMultimodalProjectorFile(String mmprojPath) {
     if (pLLm == nullptr) {
       throw Exception("ailia LLM not initialized.");
@@ -566,6 +710,8 @@ class AiliaLLMModel {
   }
 
   /// Returns `vision` and `audio` support flags for the opened projector.
+  /// Call after [openMultimodalProjectorFile] to discover supported media types.
+  /// Throws if the model is unopened or the native capability query fails.
   Map<String, bool> getMultimodalCapabilities() {
     if (pLLm == nullptr) {
       throw Exception("ailia LLM not initialized.");
@@ -591,7 +737,9 @@ class AiliaLLMModel {
     return {"vision": vision, "audio": audio};
   }
 
-  /// Internal implementation for multimodal prompts.
+  /// Converts [messages] and file or byte attachments to native media messages.
+  /// Resets streaming state, records context overflow and frees temporary data.
+  /// Throws for invalid message fields, invalid media sources or native errors.
   void _setMultimodalPromptInternal(List<Map<String, dynamic>> messages) {
     // Allocate an array of AILIALLMMultimodalChatMessage and initialize it
     final messagesPtr =
@@ -712,23 +860,5 @@ class AiliaLLMModel {
       }
       malloc.free(messagesPtr);
     }
-  }
-
-  /// Set multimodal prompt for generation with media attachments.
-  ///
-  /// @deprecated Use [setPrompt] instead. This method is deprecated and will
-  /// be removed in a future version. The unified [setPrompt] method
-  /// automatically detects media_data in messages and routes accordingly.
-  ///
-  /// messages must be a list of maps with the following properties:
-  /// - 'role' (String): The role (e.g., "system", "user", "assistant")
-  /// - 'content' (String): The text content with <__media__> placeholders
-  /// - 'media_data' (List<Map<String, dynamic>>, optional): Media attachments
-  @Deprecated(
-      'Use setPrompt() instead, which automatically detects media_data in messages.')
-  void setMultimodalPrompt(List<Map<String, dynamic>> messages) {
-    // Delegate to the unified setPrompt() method to ensure consistent behavior
-    // and projector-loaded checks.
-    setPrompt(messages);
   }
 }
