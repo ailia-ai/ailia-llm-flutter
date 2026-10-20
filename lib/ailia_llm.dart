@@ -200,8 +200,8 @@ class ailiaLlmFFI {
   ///
   /// Opens a GGUF or self-contained ailia QNN model. Without an explicit backend
   /// selection, .qnn selects HTP and GGUF selects CPU/GPU automatically. An
-  /// explicit selection must match the model format. For .qnn, n_ctx=0 selects
-  /// its compiled static context and no external GGUF/context is needed.
+  /// explicit selection must match the model format. For .qnn, n_ctx=0 uses
+  /// the context length stored in the model.
   int ailiaLLMOpenModelFileA(
     ffi.Pointer<AILIALLM> llm,
     ffi.Pointer<ffi.Char> path,
@@ -648,7 +648,7 @@ class ailiaLlmFFI {
   /// then load the multimodal projector with this function. A .qnn projector
   /// includes its device-specific context and needs no separate GGUF. Image input
   /// (VLM) requires a vision-capable projector, while audio input (ALM) requires
-  /// an audio-capable projector. Existing VLM-only packages do not support ALM.
+  /// an audio-capable projector.
   int ailiaLLMOpenMultimodalProjectorFileA(
     ffi.Pointer<AILIALLM> llm,
     ffi.Pointer<ffi.Char> mmproj_path,
