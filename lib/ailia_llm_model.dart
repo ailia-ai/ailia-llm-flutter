@@ -87,6 +87,7 @@ class AiliaLLMModel {
   Pointer<Pointer<ailia_llm_dart.AILIALLM>> pLLm = nullptr;
   dynamic dllHandle;
   bool _contextFull = false;
+  bool? _qnnGraphSwitching;
   int _numThreads = 0;
   Uint8List _buf = Uint8List(0);
   String _beforeText = "";
@@ -221,6 +222,25 @@ class AiliaLLMModel {
     _numThreads = nThreads;
   }
 
+  /// Configures QNN graph switching before [open]; disabled by default.
+  /// [enable] selects whether graph switching is enabled.
+  /// Applies to LLM, MTP, vision and audio graphs. Reduces context reloads and
+  /// memory, but SDK lazy loading can increase first-execution or generation latency.
+  /// The setting is retained across [close] and applied when [open] creates the
+  /// native instance. Disabling succeeds even when QNN is unavailable. Enabling
+  /// in that environment causes [open] to throw an [Exception] with
+  /// `AILIA_LLM_STATUS_UNIMPLEMENTED`. Calling this on an open model throws with
+  /// `AILIA_LLM_STATUS_INVALID_STATE`.
+  void setQNNGraphSwitching(bool enable) {
+    if (pLLm != nullptr && pLLm.value != nullptr) {
+      final status = dllHandle.ailiaLLMSetQNNGraphSwitching(pLLm.value, enable ? 1 : 0);
+      if (status != ailia_llm_dart.AILIA_LLM_STATUS_SUCCESS) {
+        throw Exception('ailiaLLMSetQNNGraphSwitching returned an error status $status');
+      }
+    }
+    _qnnGraphSwitching = enable;
+  }
+
   /// Opens a GGUF model or a self-contained, SoC-specific QNN text package.
   /// With no backend argument, GGUF uses automatic GPU fitting with CPU
   /// fallback, while .qnn selects HTP (QNN). Explicit Metal/GPU selection
@@ -274,6 +294,15 @@ class AiliaLLMModel {
     if (status != 0) {
       close();
       throw Exception('ailiaLLMSetNumThreads returned an error status $status');
+    }
+
+    if (_qnnGraphSwitching != null) {
+      status = dllHandle.ailiaLLMSetQNNGraphSwitching(
+          pLLm.value, _qnnGraphSwitching! ? 1 : 0);
+      if (status != 0) {
+        close();
+        throw Exception('ailiaLLMSetQNNGraphSwitching returned an error status $status');
+      }
     }
 
     if (!automatic) {
