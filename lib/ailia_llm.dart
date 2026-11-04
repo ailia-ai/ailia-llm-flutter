@@ -739,6 +739,9 @@ class ailiaLlmFFI {
   /// Images can be loaded from file path, encoded buffer (JPG, PNG, etc.), or raw RGB data.
   /// Audio accepts WAV/MP3/FLAC file paths or encoded buffers, with width/height=0.
   /// KV cache reuse identifies file and buffer media by their content hashes.
+  /// Encoder outputs are retained only for media in the current prompt; removed media is evicted.
+  /// Decoded images/audio are released when prompt setup returns.
+  /// Successfully switching to a prompt without media releases the media caches.
   ///
   /// Notes:
   ///
@@ -805,7 +808,13 @@ class ailiaLlmFFI {
   /// Parts are {"type":"text","text":"..."}, or type image/audio with exactly one of file_path (local file)
   /// and data (standard padded Base64 encoded file). JPEG/PNG and WAV/MP3/FLAC are supported by the decoder.
   /// Media requires a compatible loaded projector. URLs, raw PCM/RGB and video are unsupported.
-  /// Parts retain input order; media history is re-evaluated on each prompt.
+  /// Parts retain input order. Matching history prefixes reuse KV when ordered media inputs are unchanged
+  /// and the required KV positions remain resident. Encoded media is reused subject to backend cache conditions.
+  /// GGUF and QNN reuse retained encoder outputs even when KV must be rebuilt.
+  /// File content hashes are checked on each call; changed media content is re-evaluated.
+  /// Encoder outputs are retained only for media in the current prompt; removed media is evicted.
+  /// Decoded images/audio are released when prompt setup returns.
+  /// Successfully switching to a prompt without media releases the media caches.
   /// Assistant content is not reparsed as model-specific syntax. Supply reasoning_content and tool_calls explicitly.
   /// Append the assistant JSON returned by ailiaLLMGetResponseJson directly to the array.
   /// Each tool call requires type="function", nonempty id and function.name, and function.arguments as a JSON-object string.
@@ -923,6 +932,39 @@ class ailiaLlmFFI {
               ffi.Pointer<AILIALLM>)>>('ailiaLLMGetErrorDetail');
   late final _ailiaLLMGetErrorDetail = _ailiaLLMGetErrorDetailPtr
       .asFunction<ffi.Pointer<ffi.Char> Function(ffi.Pointer<AILIALLM>)>();
+
+  /// Configures QNN low-memory graph switching.
+  ///
+  /// Parameters:
+  ///
+  /// - `llm`: LLM instance
+  /// - `enabled`: 0: disabled (default), 1: enabled
+  ///
+  /// Returns:
+  ///
+  /// SUCCESS, INVALID_ARGUMENT, INVALID_STATE after model open, or
+  /// AILIA_LLM_STATUS_UNIMPLEMENTED when enabling without QNN.
+  ///
+  /// Call after Create and before opening a model. Applies to LLM, MTP,
+  /// vision and audio graphs. Reduces context reloads and memory, but SDK lazy
+  /// loading can increase first-execution or generation latency.
+  /// Disabling succeeds even when QNN is unavailable.
+  int ailiaLLMSetQNNGraphSwitching(
+    ffi.Pointer<AILIALLM> llm,
+    int enabled,
+  ) {
+    return _ailiaLLMSetQNNGraphSwitching(
+      llm,
+      enabled,
+    );
+  }
+
+  late final _ailiaLLMSetQNNGraphSwitchingPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Int Function(ffi.Pointer<AILIALLM>,
+              ffi.UnsignedInt)>>('ailiaLLMSetQNNGraphSwitching');
+  late final _ailiaLLMSetQNNGraphSwitching = _ailiaLLMSetQNNGraphSwitchingPtr
+      .asFunction<int Function(ffi.Pointer<AILIALLM>, int)>();
 
   /// Gets the QNN model name for the current device.
   ///

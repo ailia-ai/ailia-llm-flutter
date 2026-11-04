@@ -44,17 +44,35 @@ target_link_libraries(${PLUGIN_NAME} PRIVATE PkgConfig::GTK)
 # List of absolute paths to libraries that should be bundled with the plugin.
 # This list could contain prebuilt libraries, or libraries created by an
 # external build triggered from this build file.
-set(ailia_llm_bundled_libraries
-  "${CMAKE_CURRENT_SOURCE_DIR}/x64/libailia_llm.so"
-  "${CMAKE_CURRENT_SOURCE_DIR}/x64/libggml-base.so"
-  "${CMAKE_CURRENT_SOURCE_DIR}/x64/libggml-cpu-alderlake.so"
-  "${CMAKE_CURRENT_SOURCE_DIR}/x64/libggml-cpu-haswell.so"
-  "${CMAKE_CURRENT_SOURCE_DIR}/x64/libggml-cpu-x64.so"
-  "${CMAKE_CURRENT_SOURCE_DIR}/x64/libggml.so"
-  "${CMAKE_CURRENT_SOURCE_DIR}/x64/libllama-common.so"
-  "${CMAKE_CURRENT_SOURCE_DIR}/x64/libllama.so"
-  PARENT_SCOPE
-)
+string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" AILIA_LLM_PROCESSOR)
+if(AILIA_LLM_PROCESSOR MATCHES "^(arm64|aarch64)$")
+  set(AILIA_LLM_ARCH "arm64-v8a")
+  set(ailia_llm_bundled_libraries
+    "${CMAKE_CURRENT_SOURCE_DIR}/${AILIA_LLM_ARCH}/libailia_llm.so"
+    "${CMAKE_CURRENT_SOURCE_DIR}/${AILIA_LLM_ARCH}/libailia_llm_qnn.so"
+    "${CMAKE_CURRENT_SOURCE_DIR}/${AILIA_LLM_ARCH}/libggml-base.so"
+    "${CMAKE_CURRENT_SOURCE_DIR}/${AILIA_LLM_ARCH}/libggml-cpu-armv8.0_1.so"
+    "${CMAKE_CURRENT_SOURCE_DIR}/${AILIA_LLM_ARCH}/libggml-cpu-armv8.2_2.so"
+    "${CMAKE_CURRENT_SOURCE_DIR}/${AILIA_LLM_ARCH}/libggml-cpu-armv8.6_1.so"
+    "${CMAKE_CURRENT_SOURCE_DIR}/${AILIA_LLM_ARCH}/libggml.so"
+    "${CMAKE_CURRENT_SOURCE_DIR}/${AILIA_LLM_ARCH}/libllama-common.so"
+    "${CMAKE_CURRENT_SOURCE_DIR}/${AILIA_LLM_ARCH}/libllama.so"
+    PARENT_SCOPE
+  )
+else()
+  set(AILIA_LLM_ARCH "x64")
+  set(ailia_llm_bundled_libraries
+    "${CMAKE_CURRENT_SOURCE_DIR}/${AILIA_LLM_ARCH}/libailia_llm.so"
+    "${CMAKE_CURRENT_SOURCE_DIR}/${AILIA_LLM_ARCH}/libggml-base.so"
+    "${CMAKE_CURRENT_SOURCE_DIR}/${AILIA_LLM_ARCH}/libggml-cpu-alderlake.so"
+    "${CMAKE_CURRENT_SOURCE_DIR}/${AILIA_LLM_ARCH}/libggml-cpu-haswell.so"
+    "${CMAKE_CURRENT_SOURCE_DIR}/${AILIA_LLM_ARCH}/libggml-cpu-x64.so"
+    "${CMAKE_CURRENT_SOURCE_DIR}/${AILIA_LLM_ARCH}/libggml.so"
+    "${CMAKE_CURRENT_SOURCE_DIR}/${AILIA_LLM_ARCH}/libllama-common.so"
+    "${CMAKE_CURRENT_SOURCE_DIR}/${AILIA_LLM_ARCH}/libllama.so"
+    PARENT_SCOPE
+  )
+endif()
 
 # === Tests ===
 # These unit tests can be run from a terminal after building the example.
