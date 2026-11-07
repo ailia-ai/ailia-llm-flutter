@@ -225,8 +225,9 @@ class AiliaLLMModel {
   /// Configures QNN graph switching before [open]; disabled by default.
   /// [enable] selects whether graph switching is enabled.
   /// Applies to LLM, MTP, vision and audio graphs.
-  /// When disabled (default), contexts are retained to prioritize speed, and LLM and MTP
-  /// contexts are loaded when the model is opened. When enabled, contexts are loaded when
+  /// When disabled (default), contexts are retained to prioritize speed. The LLM context is
+  /// loaded with the MTP context when the MTP model is opened, or otherwise on the first
+  /// generation or before the first vision or audio input. When enabled, contexts are loaded when
   /// needed and released when switching between media and the LLM to reduce memory usage,
   /// but reloading may increase processing time. In both modes, vision and audio contexts
   /// are loaded on first use. Enable this on devices with limited memory (e.g. VLM on SM8475).
