@@ -945,9 +945,13 @@ class ailiaLlmFFI {
   /// SUCCESS, INVALID_ARGUMENT, INVALID_STATE after model open, or
   /// AILIA_LLM_STATUS_UNIMPLEMENTED when enabling without QNN.
   ///
-  /// Call after Create and before opening a model. Applies to LLM, MTP,
-  /// vision and audio graphs. Reduces context reloads and memory, but SDK lazy
-  /// loading can increase first-execution or generation latency.
+  /// Call after Create and before opening a model. Applies to LLM, MTP, vision and audio graphs.
+  /// When disabled (default), contexts are retained to prioritize speed. The LLM context is
+  /// loaded with the MTP context when the MTP model is opened, or otherwise on the first
+  /// generation or before the first vision or audio input. When enabled, contexts are loaded when
+  /// needed and released when switching between media and the LLM to reduce memory usage,
+  /// but reloading may increase processing time. In both modes, vision and audio contexts
+  /// are loaded on first use. Enable this on devices with limited memory (e.g. VLM on SM8475).
   /// Disabling succeeds even when QNN is unavailable.
   int ailiaLLMSetQNNGraphSwitching(
     ffi.Pointer<AILIALLM> llm,
